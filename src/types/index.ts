@@ -43,7 +43,12 @@ export interface CulturalCommunity {
   name: string
   description?: string
   culturalFocus: string[]
-  location?: any
+  location?: {
+    country: string
+    region?: string
+    city?: string
+    coordinates?: [number, number]
+  }
   memberCount: number
   isVerified: boolean
   verificationLevel: number

@@ -1,7 +1,7 @@
-import { PinataSDK } from '@pinata/sdk'
+import PinataSDK from '@pinata/sdk'
 
 export class IPFSService {
-  private pinata: PinataSDK
+  private pinata: InstanceType<typeof PinataSDK>
 
   constructor() {
     this.pinata = new PinataSDK({
@@ -22,7 +22,7 @@ export class IPFSService {
     }
   }
 
-  async uploadMetadata(metadata: any): Promise<string> {
+  async uploadMetadata(metadata: Record<string, unknown>): Promise<string> {
     try {
       const result = await this.pinata.pinJSONToIPFS(metadata)
       return result.IpfsHash

@@ -1,0 +1,27 @@
+{
+  "home": {
+    "heroImg": "head-shot.jpg",
+    "title": "Etherith",
+    "subtitle": "Preserving ancestral memories, stories, and cultural heritage for future generations",
+    "description": "Join us in protecting what makes our communities unique and valuable"
+  },
+  "features": {
+    "culturalPreservation": {
+      "title": "Cultural Preservation",
+      "description": "Safeguard ancestral memories and cultural stories from being lost or appropriated. Our platform ensures your heritage remains protected for generations."
+    },
+    "aiEnhancedMemory": {
+      "title": "AI-Enhanced Memory",
+      "description": "Leverage artificial intelligence to intelligently organize and preserve memories with rich metadata and cultural context recognition."
+    },
+    "ipfsStorage": {
+      "title": "IPFS Storage",
+      "description": "Permanent, decentralized storage on the IPFS network via Pinata ensures your memories are preserved forever, beyond any single platform."
+    }
+  },
+  "mission": {
+    "title": "More Than Technology",
+    "subtitle": "A Cultural Movement",
+    "description": "Etherith represents a cultural movement to reclaim and preserve our collective heritage. In a world where cultural appropriation and erasure are rampant, we provide the tools needed to protect what makes our communities unique."
+  }
+}

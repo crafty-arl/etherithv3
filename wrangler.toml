@@ -1,0 +1,34 @@
+name = "etherith"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[build]
+command = "npm run build"
+
+[vars]
+NODE_ENV = "production"
+
+# D1 Database - Cloudflare's native SQLite database
+[[d1_databases]]
+binding = "DB"
+database_name = "etherith-db"
+database_id = "" # This will be set after creating the database
+
+# Environment-specific configurations
+[env.development]
+name = "etherith-dev"
+vars = { NODE_ENV = "development" }
+
+[env.production]  
+name = "etherith-prod"
+vars = { NODE_ENV = "production" }
+
+# KV for caching (optional - can be added later)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = ""
+
+# R2 for file storage (optional - can be added later)
+# [[r2_buckets]]
+# binding = "STORAGE"
+# bucket_name = "etherith-storage"

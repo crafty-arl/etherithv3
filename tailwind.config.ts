@@ -66,6 +66,8 @@ const config: Config = {
       fontFamily: {
         heritage: ['Playfair Display', 'serif'],
         modern: ['Inter', 'sans-serif'],
+        playfair: ['var(--font-playfair)', 'Playfair Display', 'serif'],
+        inter: ['var(--font-inter)', 'Inter', 'sans-serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',
