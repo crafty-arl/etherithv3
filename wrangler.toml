@@ -6,12 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 command = "npm run build"
 
 # Next.js Pages configuration
-[pages_build_output_dir]
-value = ".next"
-
-# Use the Next.js adapter
-[adapter]
-name = "@cloudflare/next-on-pages"
+[assets]
+directory = ".next"
 
 [vars]
 NODE_ENV = "production"
