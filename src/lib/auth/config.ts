@@ -49,6 +49,9 @@ export const authConfig: NextAuthOptions = {
             email: user.email,
             name: user.fullName,
             image: user.avatarUrl,
+            username: user.username,
+            culturalBackground: user.culturalBackground,
+            isVerified: user.isVerified,
           }
         } catch (error) {
           console.error('Authorization error:', error)
@@ -63,6 +66,15 @@ export const authConfig: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 
+  jwt: {
+    // Use a strong secret for JWT signing
+    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+    // Use RS256 for better security
+    algorithm: 'HS256', // Note: RS256 requires additional setup, using HS256 for now
+    // Set reasonable expiration
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+
   callbacks: {
     async session({ session, token }) {
       if (token && session.user) {
@@ -71,7 +83,15 @@ export const authConfig: NextAuthOptions = {
           user: {
             ...session.user,
             id: token.sub as string,
-          } as typeof session.user & { id: string },
+            username: token.username as string,
+            culturalBackground: token.culturalBackground as string,
+            isVerified: token.isVerified as boolean,
+          } as typeof session.user & { 
+            id: string;
+            username: string;
+            culturalBackground: string;
+            isVerified: boolean;
+          },
         }
       }
       return session
@@ -87,12 +107,14 @@ export const authConfig: NextAuthOptions = {
       
       if (user) {
         token.sub = user.id
+        token.username = user.username
+        token.culturalBackground = user.culturalBackground
+        token.isVerified = user.isVerified
       }
       
       return token
     },
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async signIn({ user: _user, account, profile }) {
       if (account?.provider === 'discord' && profile) {
         try {
@@ -135,6 +157,38 @@ export const authConfig: NextAuthOptions = {
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',
+  },
+
+  // Edge-compatible settings for Cloudflare Workers
+  useSecureCookies: process.env.NODE_ENV === 'production',
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      }
+    },
+    callbackUrl: {
+      name: `next-auth.callback-url`,
+      options: {
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      }
+    },
+    csrfToken: {
+      name: `next-auth.csrf-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      }
+    }
   },
 
   debug: process.env.NODE_ENV === 'development',

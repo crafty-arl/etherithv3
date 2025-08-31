@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useSession, signIn, signOut, getSession } from 'next-auth/react';
 
 interface User {
   id: string;
@@ -8,6 +9,9 @@ interface User {
   firstName?: string;
   lastName?: string;
   avatar?: string;
+  username?: string;
+  culturalBackground?: string;
+  isVerified?: boolean;
 }
 
 interface AuthContextType {
@@ -16,57 +20,57 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (userData: { firstName: string; lastName: string; username: string; email: string; password: string }) => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session on mount
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      // TODO: Implement session check with NextAuth or custom auth
-      // For now, check localStorage
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        // TODO: Validate token with backend
-        setUser({
-          id: '1',
-          email: 'user@example.com',
-          firstName: 'Demo',
-          lastName: 'User'
-        });
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-    } finally {
-      setIsLoading(false);
+    if (status === 'loading') {
+      setIsLoading(true);
+      return;
     }
-  };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const login = async (email: string, _password: string) => {
+    if (session?.user) {
+      // Transform NextAuth session to our User interface
+      const transformedUser: User = {
+        id: session.user.id || '',
+        email: session.user.email || '',
+        firstName: session.user.name?.split(' ')[0] || '',
+        lastName: session.user.name?.split(' ').slice(1).join(' ') || '',
+        avatar: session.user.image || '',
+        username: session.user.username || '',
+        culturalBackground: session.user.culturalBackground || '',
+        isVerified: session.user.isVerified || false,
+      };
+      setUser(transformedUser);
+    } else {
+      setUser(null);
+    }
+    
+    setIsLoading(false);
+  }, [session, status]);
+
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual login logic with NextAuth or custom auth
-      // For now, simulate login
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const user: User = {
-        id: '1',
+      const result = await signIn('credentials', {
         email,
-        firstName: 'Demo',
-        lastName: 'User'
-      };
-      
-      setUser(user);
-      localStorage.setItem('auth_token', 'demo_token');
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+
+      // Session will be updated via useSession hook
+      await refreshSession();
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -78,9 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual logout logic
+      await signOut({ redirect: false });
       setUser(null);
-      localStorage.removeItem('auth_token');
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
@@ -91,19 +94,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (userData: { firstName: string; lastName: string; username: string; email: string; password: string }) => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual signup logic with NextAuth or custom auth
-      // For now, simulate signup
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const user: User = {
-        id: '1',
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName
-      };
-      
-      setUser(user);
-      localStorage.setItem('auth_token', 'demo_token');
+      // Call our signup API endpoint
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Signup failed');
+      }
+
+      // Auto-login after successful signup
+      await login(userData.email, userData.password);
     } catch (error) {
       console.error('Signup failed:', error);
       throw error;
@@ -112,12 +118,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshSession = async () => {
+    try {
+      const newSession = await getSession();
+      if (newSession?.user) {
+        const transformedUser: User = {
+          id: newSession.user.id || '',
+          email: newSession.user.email || '',
+          firstName: newSession.user.name?.split(' ')[0] || '',
+          lastName: newSession.user.name?.split(' ').slice(1).join(' ') || '',
+          avatar: newSession.user.image || '',
+          username: newSession.user.username || '',
+          culturalBackground: newSession.user.culturalBackground || '',
+          isVerified: newSession.user.isVerified || false,
+        };
+        setUser(transformedUser);
+      }
+    } catch (error) {
+      console.error('Session refresh failed:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
     login,
     logout,
-    signup
+    signup,
+    refreshSession
   };
 
   return (

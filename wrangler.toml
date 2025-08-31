@@ -5,6 +5,14 @@ compatibility_flags = ["nodejs_compat"]
 [build]
 command = "npm run build"
 
+# Next.js Pages configuration
+[pages_build_output_dir]
+value = ".next"
+
+# Use the Next.js adapter
+[adapter]
+name = "@cloudflare/next-on-pages"
+
 [vars]
 NODE_ENV = "production"
 
@@ -12,7 +20,11 @@ NODE_ENV = "production"
 [[d1_databases]]
 binding = "DB"
 database_name = "etherith-db"
-database_id = "" # This will be set after creating the database
+database_id = "042a5e9c-d027-42e9-aeab-cf5302a77af7"
+
+# Enable AI Workers for memory analysis
+[ai]
+binding = "AI"
 
 # Environment-specific configurations
 [env.development]

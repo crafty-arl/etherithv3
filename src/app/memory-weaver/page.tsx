@@ -2,21 +2,59 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, Bot, Settings, ArrowLeft, HelpCircle, User, BookOpen, Heart, Camera, Users, Mic } from 'lucide-react';
+import { Send, Sparkles, Bot, Settings, ArrowLeft, HelpCircle, BookOpen, Heart, Camera, Users, Mic, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth/auth-context';
 import Link from 'next/link';
+import { useConnectionMonitor } from '@/hooks/useConnectionMonitor';
+import { ConnectionStatusIndicator, MessageStatusIndicator, ProcessingProgress } from '@/components/ui/status-indicators';
+import ErrorBoundary, { AsyncErrorBoundary } from '@/components/ui/error-boundary';
+import { AuthStatus } from '@/components/ui/auth-status';
+
+type MessageStatus = 'sending' | 'delivered' | 'processing' | 'completed' | 'failed' | 'retry';
+// type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
+
+interface ConversationState {
+  isOnboarding: boolean;
+  hasGreeted: boolean;
+  currentTopic?: string;
+  memoryContext: {
+    title?: string;
+    category?: string;
+    tags: string[];
+    people: string[];
+    locations: string[];
+    timeframe?: string;
+    emotions: string[];
+  };
+  followUpQuestions: string[];
+  completedAspects: string[];
+}
 
 interface Message {
   id: string;
   type: 'user' | 'ai';
   content: string;
   timestamp: Date;
-  metadata?: {
+  status?: MessageStatus;
+  retryCount?: number;
+  error?: string;
+  isTyping?: boolean;
+          metadata?: Record<string, unknown>;
+}
+
+interface AIAnalysisResponse {
+  culturalElements: string[];
+  emotionalSignificance: string;
+  culturalPractices: string[];
+  peopleIdentified: string[];
+  locationContext?: string;
+  temporalContext?: string;
+  culturalSignificanceScore: number;
+  suggestedTags: string[];
+  metadata: {
     title?: string;
     category?: string;
-    tags?: string[];
-    location?: string;
-    date?: string;
+    culturalHeritage?: string[];
   };
 }
 
@@ -26,6 +64,22 @@ export default function MemoryWeaverPage() {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStage, setProcessingStage] = useState<string>('');
+  const connectionMonitor = useConnectionMonitor();
+  const [conversationState, setConversationState] = useState<ConversationState>({
+    isOnboarding: true,
+    hasGreeted: false,
+    memoryContext: {
+      tags: [],
+      people: [],
+      locations: [],
+      emotions: []
+    },
+    followUpQuestions: [],
+    completedAspects: []
+  });
+  const [isAITyping, setIsAITyping] = useState(false);
   const [currentMemory, setCurrentMemory] = useState({
     title: '',
     description: '',
@@ -49,6 +103,23 @@ export default function MemoryWeaverPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Add welcome message on component mount
+  useEffect(() => {
+    if (messages.length === 0 && !conversationState.hasGreeted) {
+      setTimeout(() => {
+        const welcomeMessage: Message = {
+          id: 'welcome-' + Date.now(),
+          type: 'ai',
+          content: "Hi there! I'm Memory Weaver, your AI companion for preserving precious memories and cultural heritage. I'm here to help you capture the stories, traditions, and moments that matter most to you and your family. What memory would you like to share with me today?",
+          timestamp: new Date(),
+          status: 'completed'
+        };
+        setMessages([welcomeMessage]);
+        setConversationState(prev => ({ ...prev, hasGreeted: true }));
+      }, 1500);
+    }
+  }, [messages.length, conversationState.hasGreeted]);
+
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
@@ -57,37 +128,194 @@ export default function MemoryWeaverPage() {
       type: 'user',
       content: inputValue,
       timestamp: new Date(),
+      status: 'sending',
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsTyping(true);
+    setIsProcessing(true);
+    setProcessingStage('Sending message...');
 
-    // Simulate AI response
+    // Update message status to delivered
     setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: generateAIResponse(inputValue),
-        timestamp: new Date(),
-        metadata: extractMetadata(inputValue),
-      };
-      setMessages(prev => [...prev, aiResponse]);
+      setMessages(prev => prev.map(msg => 
+        msg.id === userMessage.id 
+          ? { ...msg, status: 'delivered' }
+          : msg
+      ));
+      setProcessingStage('Analyzing content...');
+    }, 500);
+
+    try {
+      setProcessingStage('Connecting to AI...');
+      
+      // Call AI analysis API for enhanced memory processing
+      const response = await fetch('/api/ai/analyze-memory', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: inputValue,
+          culturalContext: user?.culturalBackground ? [user.culturalBackground] : [],
+          language: 'en', // Detect from user preferences
+          userId: user?.id || 'anonymous'
+        }),
+      });
+      
+      setProcessingStage('Processing AI response...');
+
+      if (response.ok) {
+        setProcessingStage('Analyzing your memory...');
+        const analysis: AIAnalysisResponse = await response.json();
+        
+        // Update conversation state
+        const newAspects: string[] = [];
+        if (analysis.peopleIdentified?.length > 0) newAspects.push('people');
+        if (analysis.emotionalSignificance) newAspects.push('emotions');
+        if (analysis.locationContext) newAspects.push('location');
+        if (analysis.temporalContext) newAspects.push('time');
+        if (analysis.culturalPractices?.length > 0) newAspects.push('traditions');
+        
+        setConversationState(prev => ({
+          ...prev,
+          hasGreeted: true,
+          isOnboarding: false,
+          memoryContext: {
+            ...prev.memoryContext,
+            title: analysis.metadata.title,
+            category: analysis.metadata.category,
+            tags: [...new Set([...prev.memoryContext.tags, ...analysis.suggestedTags])],
+            people: [...new Set([...prev.memoryContext.people, ...analysis.peopleIdentified])],
+            locations: analysis.locationContext ? [...new Set([...prev.memoryContext.locations, analysis.locationContext])] : prev.memoryContext.locations,
+            emotions: analysis.emotionalSignificance ? [...new Set([...prev.memoryContext.emotions, analysis.emotionalSignificance])] : prev.memoryContext.emotions
+          },
+          completedAspects: [...new Set([...prev.completedAspects, ...newAspects])]
+        }));
+        
+        // Update current memory with AI-generated metadata
+        setCurrentMemory(prev => ({
+          ...prev,
+          title: analysis.metadata.title || prev.title,
+          category: analysis.metadata.category || prev.category,
+          tags: [...new Set([...prev.tags, ...analysis.suggestedTags])],
+          culturalContext: analysis.culturalElements.join(', '),
+          emotionalSignificance: analysis.emotionalSignificance
+        }));
+
+        // Update user message to completed
+        setMessages(prev => prev.map(msg => 
+          msg.id === userMessage.id 
+            ? { ...msg, status: 'completed' }
+            : msg
+        ));
+
+        setProcessingStage('Crafting response...');
+        
+        // Generate conversational AI response
+        const conversationalResponse = generateConversationalResponse(inputValue, conversationState, analysis);
+        
+        setTimeout(() => {
+          addAIMessageWithTyping(conversationalResponse, {
+            title: analysis.metadata.title,
+            category: analysis.metadata.category,
+            tags: analysis.suggestedTags,
+            culturalSignificance: analysis.culturalSignificanceScore
+          });
+        }, 800);
+      } else {
+        // Update user message to failed and AI fails
+        setMessages(prev => prev.map(msg => 
+          msg.id === userMessage.id 
+            ? { ...msg, status: 'failed', error: 'AI analysis failed' }
+            : msg
+        ));
+        
+        setProcessingStage('Using fallback response...');
+        
+        // Update conversation state even without AI analysis
+        setConversationState(prev => ({ ...prev, hasGreeted: true, isOnboarding: false }));
+        
+        const fallbackResponse = generateConversationalResponse(inputValue, conversationState);
+        setTimeout(() => {
+          addAIMessageWithTyping(fallbackResponse, extractMetadata(inputValue));
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      setProcessingStage('Connection failed');
+      
+      // Update user message to failed
+      setMessages(prev => prev.map(msg => 
+        msg.id === userMessage.id 
+          ? { ...msg, status: 'failed', error: error instanceof Error ? error.message : 'Network error' }
+          : msg
+      ));
+      
+      // Fallback to mock response after delay
+      setTimeout(() => {
+        // Update conversation state even on error
+        setConversationState(prev => ({ ...prev, hasGreeted: true, isOnboarding: false }));
+        
+        const fallbackResponse = "I'm experiencing some technical difficulties, but I'm still here to help you preserve this memory. " + generateConversationalResponse(inputValue, conversationState);
+        addAIMessageWithTyping(fallbackResponse, extractMetadata(inputValue));
+      }, 2000);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+      setIsProcessing(false);
+      setProcessingStage('');
+    }
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const generateAIResponse = (_userInput: string): string => {
-    const responses = [
-      "That's a beautiful memory! Let me help you capture the details. What year did this happen?",
-      "I can sense the emotional significance of this memory. Could you tell me more about the people involved?",
-      "This sounds like an important cultural moment. What traditions or customs were part of this memory?",
-      "I'd love to help preserve this memory. What location was this memory associated with?",
-      "This memory seems to have deep family significance. Can you describe the emotions you felt?",
-      "Let me help you organize this memory properly. What category would you place this in?"
+  const generateConversationalResponse = (userInput: string, state: ConversationState, analysis?: AIAnalysisResponse): string => {
+    // Initial greeting
+    if (!state.hasGreeted) {
+      return "Hi there! I'm Memory Weaver, your AI companion for preserving precious memories and cultural heritage. I'd love to help you capture a meaningful memory today. What would you like to share with me?";
+    }
+
+    // If we have analysis, use it for context-aware responses
+    if (analysis) {
+      const responses = [
+        `Thank you for sharing that with me. I can sense this memory holds deep meaning for you${analysis.emotionalSignificance ? ` - there's a beautiful sense of ${analysis.emotionalSignificance} here` : ''}. ${analysis.peopleIdentified.length > 0 ? `I noticed you mentioned ${analysis.peopleIdentified.join(', ')} - ` : ''}tell me more about what made this moment so special for you?`,
+        
+        `What a wonderful memory! ${analysis.culturalElements.length > 0 ? `I can see the cultural richness here, especially around ${analysis.culturalElements.slice(0, 2).join(' and ')}.` : ''} ${analysis.locationContext ? `It sounds like ${analysis.locationContext} was an important place for this memory.` : ''} Can you help me understand what this moment meant to your family or community?`,
+        
+        `This sounds like such a meaningful experience. ${analysis.culturalSignificanceScore > 0.5 ? 'I can tell this has deep cultural significance.' : ''} ${analysis.peopleIdentified.length > 0 ? `The people you mentioned - ${analysis.peopleIdentified.join(', ')} - ` : 'The people involved '}must have been very important to you. What roles did they play in this memory?`,
+        
+        `I'm honored you're sharing this with me. ${analysis.temporalContext ? `The timing you mentioned - ${analysis.temporalContext} - ` : 'When this happened '}seems significant. ${analysis.culturalPractices.length > 0 ? `And the cultural practices like ${analysis.culturalPractices.join(', ')} ` : 'The traditions involved '}sound really meaningful. What emotions do you remember feeling during this time?`
+      ];
+      
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+
+    // Natural follow-up questions based on conversation context
+    const aspects = ['people', 'emotions', 'location', 'time', 'traditions', 'significance'];
+    const missingAspects = aspects.filter(aspect => !state.completedAspects.includes(aspect));
+    
+    if (missingAspects.length > 0) {
+      const aspect = missingAspects[0];
+      const followUps = {
+        people: "Who else was part of this memory? Tell me about the important people who were there.",
+        emotions: "What emotions come up for you when you think about this memory? How did it make you feel?",
+        location: "Where did this take place? What was special about that location for you and your family?",
+        time: "When did this happen? What was going on in your life or your family's life around that time?",
+        traditions: "Were there any cultural traditions, customs, or rituals that were part of this experience?",
+        significance: "What makes this memory so important to preserve? How has it shaped you or your family?"
+      };
+      
+      return followUps[aspect as keyof typeof followUps] || "Tell me more about this memory. What other details would you like to capture?";
+    }
+    
+    // Wrap-up responses
+    const wrapUpResponses = [
+      "Thank you for sharing such a beautiful and meaningful memory with me. This sounds like something truly worth preserving for future generations. Would you like to add any final thoughts or details?",
+      "What a rich and touching memory you've shared. I can see how much this means to you and your family's story. Is there anything else about this experience that you'd like to make sure we capture?",
+      "This memory is a treasure. You've painted such a vivid picture of this meaningful moment. Would you like to share any other aspects of this experience before we preserve it?"
     ];
-    return responses[Math.floor(Math.random() * responses.length)];
+    
+    return wrapUpResponses[Math.floor(Math.random() * wrapUpResponses.length)];
   };
 
   const extractMetadata = (input: string) => {
@@ -97,6 +325,28 @@ export default function MemoryWeaverPage() {
     if (input.toLowerCase().includes('tradition')) metadata.category = 'Cultural';
     if (input.toLowerCase().includes('childhood')) metadata.category = 'Personal';
     return metadata;
+  };
+
+  // Add delay to simulate natural typing
+  const addAIMessageWithTyping = async (content: string, metadata?: Record<string, unknown>) => {
+    setIsAITyping(true);
+    
+    // Simulate typing delay based on message length
+    const typingDelay = Math.min(Math.max(content.length * 30, 1000), 3000);
+    
+    setTimeout(() => {
+      const aiResponse: Message = {
+        id: Date.now().toString(),
+        type: 'ai',
+        content,
+        timestamp: new Date(),
+        status: 'completed',
+        metadata,
+      };
+      
+      setMessages(prev => [...prev, aiResponse]);
+      setIsAITyping(false);
+    }, typingDelay);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,25 +366,52 @@ export default function MemoryWeaverPage() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _handleSaveMemory = async () => {
+          const handleSaveMemory = async () => {
     // TODO: Implement IPFS storage and blockchain recording
     console.log('Saving memory:', currentMemory);
     alert('Memory saved successfully! (Demo mode)');
   };
 
+  const retryMessage = async (messageId: string) => {
+    const messageToRetry = messages.find(msg => msg.id === messageId);
+    if (!messageToRetry) return;
+    
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId 
+        ? { ...msg, status: 'retry', retryCount: (msg.retryCount || 0) + 1 }
+        : msg
+    ));
+    
+    // Remove the failed message and retry
+    const originalInput = messageToRetry.content;
+    setInputValue(originalInput);
+    
+    setTimeout(() => {
+      handleSendMessage();
+    }, 100);
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      if (!isProcessing) {
+        handleSendMessage();
+      }
     }
   };
 
   return (
-    <div className="min-h-screen"
-         style={{
-           background: 'linear-gradient(135deg, #f8f7f5 0%, #ffffff 30%, #f5f4f2 70%, #e8e6e3 100%)'
-         }}>
+    <ErrorBoundary onError={(error, errorInfo) => {
+      console.error('Memory Weaver Error:', error, errorInfo);
+      // Here you could send error to logging service
+    }}>
+      <AsyncErrorBoundary onError={(error) => {
+        console.error('Async Error in Memory Weaver:', error);
+      }}>
+        <div className="min-h-screen"
+             style={{
+               background: 'linear-gradient(135deg, #f8f7f5 0%, #ffffff 30%, #f5f4f2 70%, #e8e6e3 100%)'
+             }}>
       {/* Header */}
       <div className="sticky top-0 z-50"
            style={{
@@ -164,12 +441,7 @@ export default function MemoryWeaverPage() {
             </div>
             
             <div className="flex items-center space-x-4">
-              {user && (
-                <div className="flex items-center space-x-2">
-                  <User className="w-4 h-4 text-stone-600" />
-                  <span className="text-stone-700 font-medium">Welcome, {user.firstName}!</span>
-                </div>
-              )}
+              <AuthStatus />
               <button 
                 onClick={() => setShowHelp(!showHelp)}
                 className="p-2 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all duration-200"
@@ -263,9 +535,11 @@ export default function MemoryWeaverPage() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask Memory Weaver to preserve a memory about..."
+                placeholder={conversationState.hasGreeted 
+                  ? "Continue sharing your memory..."
+                  : "Tell me about a memory you'd like to preserve..."}
                 className="w-full p-6 text-lg border border-stone-300 rounded-2xl focus:ring-2 focus:ring-stone-500 focus:border-transparent resize-none shadow-lg"
-                rows={4}
+                rows={conversationState.hasGreeted ? 2 : 4}
                 style={{
                   background: 'rgba(255, 255, 255, 0.9)',
                   backdropFilter: 'blur(20px) saturate(180%)',
@@ -274,7 +548,9 @@ export default function MemoryWeaverPage() {
               />
               <button
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || isProcessing}
+                aria-label="Send memory"
+                title={isProcessing ? 'Processing...' : 'Send memory'}
                 className="absolute right-4 top-4 p-3 rounded-xl text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   background: 'linear-gradient(145deg, #1a1a1a, #2d2d2d)',
@@ -293,7 +569,11 @@ export default function MemoryWeaverPage() {
                   }
                 }}
               >
-                <Send className="w-5 h-5" />
+                {isProcessing ? (
+                  <div className="w-5 h-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
               </button>
             </div>
             
@@ -373,8 +653,8 @@ export default function MemoryWeaverPage() {
           )}
         </AnimatePresence>
 
-        {/* Chat Interface (Hidden by default, shows after first message) */}
-        {messages.length > 0 && (
+        {/* Chat Interface (Shows immediately with welcome message) */}
+        {(messages.length > 0 || conversationState.hasGreeted) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -390,23 +670,38 @@ export default function MemoryWeaverPage() {
                  }}>
               {/* Chat Header */}
               <div className="p-6 border-b border-stone-200">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center"
-                       style={{
-                         background: 'linear-gradient(145deg, #d2b48c, #c8a882)',
-                         boxShadow: 'inset 3px 3px 6px rgba(255,255,255,0.4), inset -3px -3px 6px rgba(0,0,0,0.1)'
-                       }}>
-                    <Bot className="w-6 h-6 text-white" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                         style={{
+                           background: 'linear-gradient(145deg, #d2b48c, #c8a882)',
+                           boxShadow: 'inset 3px 3px 6px rgba(255,255,255,0.4), inset -3px -3px 6px rgba(0,0,0,0.1)'
+                         }}>
+                      <Bot className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-stone-900">Memory Weaver AI</h3>
+                      <p className="text-sm text-stone-600">Your cultural heritage preservation companion</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-stone-900">Memory Weaver AI</h3>
-                    <p className="text-sm text-stone-600">Your cultural heritage preservation companion</p>
-                  </div>
+                  
+                  {/* Connection Status Indicator */}
+                  <ConnectionStatusIndicator 
+                    status={connectionMonitor.status}
+                    showText={true}
+                    size="md"
+                  />
                 </div>
+                
+                {/* Processing Status Bar */}
+                <ProcessingProgress 
+                  stage={processingStage}
+                  isVisible={isProcessing && !!processingStage}
+                />
               </div>
 
               {/* Chat Messages */}
-              <div className="max-h-96 overflow-y-auto p-6 space-y-4">
+              <div className="max-h-[500px] overflow-y-auto p-6 space-y-4">
                 <AnimatePresence>
                   {messages.map((message) => (
                     <motion.div
@@ -415,34 +710,62 @@ export default function MemoryWeaverPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                      <div className={`max-w-[80%] rounded-2xl px-4 py-3 relative ${
                         message.type === 'user'
                           ? 'bg-stone-900 text-white'
                           : 'bg-stone-100 text-stone-900'
                       }`}>
-                        <p className="text-sm">{message.content}</p>
-                        {message.metadata && (
-                          <div className="mt-2 pt-2 border-t border-stone-200">
-                            <p className="text-xs text-stone-500">
-                              Category: {message.metadata.category || 'Uncategorized'}
-                            </p>
+                        <div className="flex items-start space-x-2">
+                          <div className="flex-1">
+                            <p className="text-sm">{message.content}</p>
+                            {message.metadata && (
+                              <div className="mt-2 pt-2 border-t border-stone-200">
+                                <p className="text-xs text-stone-500">
+                                  Category: {(message.metadata as Record<string, unknown>).category as string || 'Uncategorized'}
+                                </p>
+                              </div>
+                            )}
+                            {message.error && (
+                              <div className="mt-2 pt-2 border-t border-red-200">
+                                <p className="text-xs text-red-500 flex items-center space-x-1">
+                                  <AlertCircle className="w-3 h-3" />
+                                  <span>{message.error}</span>
+                                </p>
+                              </div>
+                            )}
                           </div>
-                        )}
+                          
+                          {/* Message Status Indicator */}
+                          <div className="flex-shrink-0 mt-1 group">
+                            <MessageStatusIndicator 
+                              status={message.status || 'completed'}
+                              error={message.error}
+                              retryCount={message.retryCount}
+                              onRetry={() => retryMessage(message.id)}
+                              size="sm"
+                            />
+                          </div>
+                        </div>
+                        
                       </div>
                     </motion.div>
                   ))}
-                  {isTyping && (
+                  {(isTyping || isAITyping) && (
                     <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
                       className="flex justify-start"
                     >
-                      <div className="bg-stone-100 rounded-2xl px-4 py-3">
+                      <div className="bg-stone-100 rounded-2xl px-4 py-3 flex items-center space-x-2">
                         <div className="flex space-x-1">
                           <div className="w-2 h-2 bg-stone-400 rounded-full animate-bounce"></div>
                           <div className="w-2 h-2 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                           <div className="w-2 h-2 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                         </div>
+                        <span className="text-xs text-stone-500 italic">
+                          {isAITyping ? 'Memory Weaver is thinking...' : 'Processing...'}
+                        </span>
                       </div>
                     </motion.div>
                   )}
@@ -508,5 +831,7 @@ export default function MemoryWeaverPage() {
          </div>
       </div>
     </div>
+    </AsyncErrorBoundary>
+  </ErrorBoundary>
   );
 }

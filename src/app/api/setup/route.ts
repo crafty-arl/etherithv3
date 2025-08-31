@@ -1,21 +1,37 @@
 import { NextResponse } from 'next/server';
 import { createDB } from '@/lib/db';
+import { users, sessions, accounts, verificationTokens } from '@/lib/db/schema';
 
 export async function GET() {
   try {
-    // Check if we're in a Cloudflare Workers environment
-    if (typeof globalThis.DB !== 'undefined') {
-      const db = createDB(globalThis.DB);
+    const db = createDB(globalThis.DB);
+    
+    // Check if tables exist by trying to query them
+    try {
+      await db.select().from(users).limit(1);
+      await db.select().from(sessions).limit(1);
+      await db.select().from(accounts).limit(1);
+      await db.select().from(verificationTokens).limit(1);
       
-      // Create the necessary tables for NextAuth
+      return NextResponse.json({
+        message: 'Database tables already exist',
+        status: 'ready'
+      });
+    } catch {
+      // Tables don't exist, create them
+      console.log('Creating database tables...');
+      
+      // Create tables using Drizzle's migration system
+      // Note: In production, you should use proper migrations
+      // This is a simplified setup for development
+      
+      // Create users table
       await db.run(`
         CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY,
           email TEXT NOT NULL UNIQUE,
           username TEXT NOT NULL UNIQUE,
           full_name TEXT NOT NULL,
-          first_name TEXT,
-          last_name TEXT,
           password TEXT,
           avatar_url TEXT,
           bio TEXT,
@@ -27,7 +43,8 @@ export async function GET() {
           updated_at INTEGER NOT NULL DEFAULT (unixepoch())
         )
       `);
-
+      
+      // Create sessions table
       await db.run(`
         CREATE TABLE IF NOT EXISTS sessions (
           id TEXT PRIMARY KEY,
@@ -37,7 +54,8 @@ export async function GET() {
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
       `);
-
+      
+      // Create accounts table
       await db.run(`
         CREATE TABLE IF NOT EXISTS accounts (
           id TEXT PRIMARY KEY,
@@ -55,7 +73,8 @@ export async function GET() {
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
       `);
-
+      
+      // Create verification_tokens table
       await db.run(`
         CREATE TABLE IF NOT EXISTS verification_tokens (
           id TEXT PRIMARY KEY,
@@ -64,32 +83,25 @@ export async function GET() {
           expires INTEGER NOT NULL
         )
       `);
-
+      
       // Create indexes for better performance
       await db.run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
       await db.run(`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`);
-      await db.run(`CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id)`);
       await db.run(`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`);
-      await db.run(`CREATE INDEX IF NOT EXISTS idx_sessions_session_token ON sessions(session_token)`);
       await db.run(`CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id)`);
-      await db.run(`CREATE INDEX IF NOT EXISTS idx_accounts_provider_account_id ON accounts(provider_account_id)`);
-
-      return NextResponse.json({ 
+      await db.run(`CREATE INDEX IF NOT EXISTS idx_verification_tokens_identifier ON verification_tokens(identifier)`);
+      
+      return NextResponse.json({
         message: 'Database tables created successfully',
-        tables: ['users', 'sessions', 'accounts', 'verification_tokens']
-      });
-    } else {
-      // We're in a local development environment
-      return NextResponse.json({ 
-        message: 'Running in local development mode. Database setup not needed.',
-        environment: 'local'
+        status: 'created'
       });
     }
+    
   } catch (error) {
-    console.error('Database setup error:', error);
-    return NextResponse.json(
-      { error: 'Failed to setup database', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    console.error('Setup error:', error);
+    return NextResponse.json({ 
+      error: 'Failed to setup database', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    }, { status: 500 });
   }
 }
