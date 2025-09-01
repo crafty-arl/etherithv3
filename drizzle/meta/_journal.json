@@ -15,6 +15,13 @@
       "when": 1756577973443,
       "tag": "0001_romantic_mantis",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1756578000000,
+      "tag": "0002_add_password_field",
+      "breakpoints": true
     }
   ]
 }

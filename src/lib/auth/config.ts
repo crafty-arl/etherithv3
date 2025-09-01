@@ -1,13 +1,16 @@
 import { NextAuthOptions } from 'next-auth'
 import DiscordProvider from 'next-auth/providers/discord'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import { D1Adapter } from '@auth/d1-adapter'
 import { createDB } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
-import { users } from '@/lib/db/schema'
+import { users, accounts } from '@/lib/db/schema'
 
 export const authConfig: NextAuthOptions = {
-  // We'll configure the adapter in the route handler where we have access to D1
+  // Use the official D1 adapter when available
+  adapter: typeof globalThis.DB !== 'undefined' ? D1Adapter(globalThis.DB) : undefined,
+  
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
@@ -116,25 +119,8 @@ export const authConfig: NextAuthOptions = {
               token.isVerified = discordProfile.verified || false
             }
           } else {
-            // Cloudflare Workers environment - use database
-            const db = createDB(globalThis.DB)
-            const discordProfile = profile as { id?: string; username?: string }
-            
-            if (discordProfile.id) {
-              // Fetch the user data from database
-              const dbUser = await db.select().from(users)
-                .where(eq(users.discordId, discordProfile.id))
-                .limit(1)
-              
-              if (dbUser.length > 0) {
-                token.sub = dbUser[0].id
-                token.username = dbUser[0].username
-                token.culturalBackground = dbUser[0].culturalBackground
-                token.isVerified = dbUser[0].isVerified
-                token.discordId = dbUser[0].discordId
-                token.avatarUrl = dbUser[0].avatarUrl
-              }
-            }
+            // Cloudflare Workers environment - D1 adapter handles this automatically
+            console.log('Cloudflare Workers: D1 adapter will handle Discord data storage')
           }
         } catch (error) {
           console.error('JWT Discord data fetch error:', error)
@@ -172,80 +158,8 @@ export const authConfig: NextAuthOptions = {
             return true
           }
           
-          // Cloudflare Workers environment - use database
-          const db = createDB(globalThis.DB)
-          
-          // Type the Discord profile properly
-          const discordProfile = profile as { 
-            id?: string; 
-            email?: string; 
-            username?: string; 
-            global_name?: string; 
-            avatar?: string; 
-            verified?: boolean 
-          }
-          
-          if (!discordProfile.id) {
-            console.error('Missing Discord ID in profile')
-            return false
-          }
-          
-          // Check if user already exists by Discord ID
-          const existingUsers = await db.select().from(users)
-            .where(eq(users.discordId, discordProfile.id))
-            .limit(1)
-          
-          if (existingUsers.length === 0) {
-            // Check if user exists by email and link the accounts
-            let userId: string
-            const email = discordProfile.email || `${discordProfile.username}@discord.local`
-            
-            const existingByEmail = await db.select().from(users)
-              .where(eq(users.email, email))
-              .limit(1)
-            
-            if (existingByEmail.length > 0) {
-              // Link Discord to existing account
-              userId = existingByEmail[0].id
-              await db.update(users)
-                .set({
-                  discordId: discordProfile.id,
-                  avatarUrl: discordProfile.avatar 
-                    ? `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png`
-                    : existingByEmail[0].avatarUrl,
-                  isVerified: discordProfile.verified || existingByEmail[0].isVerified,
-                  updatedAt: new Date()
-                })
-                .where(eq(users.id, userId))
-            } else {
-              // Create completely new user
-              userId = crypto.randomUUID()
-              await db.insert(users).values({
-                id: userId,
-                email: email,
-                username: discordProfile.username || `discord_${discordProfile.id}`,
-                fullName: discordProfile.global_name || discordProfile.username || 'Discord User',
-                avatarUrl: discordProfile.avatar 
-                  ? `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png`
-                  : null,
-                discordId: discordProfile.id,
-                isVerified: discordProfile.verified || false,
-                verificationLevel: 1
-              })
-            }
-          } else {
-            // Update existing Discord user
-            await db.update(users)
-              .set({
-                avatarUrl: discordProfile.avatar 
-                  ? `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png`
-                  : existingUsers[0].avatarUrl,
-                isVerified: discordProfile.verified || existingUsers[0].isVerified,
-                updatedAt: new Date()
-              })
-              .where(eq(users.discordId, discordProfile.id))
-          }
-          
+          // Cloudflare Workers environment - D1 adapter handles this automatically
+          console.log('Cloudflare Workers: D1 adapter will handle Discord sign-in')
           return true
         } catch (error) {
           console.error('Discord sign-in error:', error)
