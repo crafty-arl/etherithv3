@@ -11,7 +11,15 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (session) {
-      router.push('/');
+      // Check if there's a callback URL in the query params
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl');
+      
+      if (callbackUrl) {
+        router.push(callbackUrl);
+      } else {
+        router.push('/memory-weaver'); // Default dashboard
+      }
     }
   }, [session, router]);
 

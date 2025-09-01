@@ -8,12 +8,29 @@ interface User {
   email: string;
   username: string;
   fullName: string;
-  password: string;
+  password?: string;
+  avatarUrl?: string;
+  bio?: string;
+  discordId?: string;
   culturalBackground?: string;
   isVerified: boolean;
   verificationLevel: number;
   createdAt: string;
   updatedAt: string;
+}
+
+interface DiscordUser {
+  id: string;
+  username: string;
+  email?: string;
+  global_name?: string;
+  avatar?: string;
+  verified?: boolean;
+}
+
+interface DiscordAuthRequest {
+  discordUser: DiscordUser;
+  accessToken: string;
 }
 
 interface SignupRequest {
@@ -51,6 +68,10 @@ export default {
         return await handleSignup(request, env, corsHeaders);
       }
       
+      if (path === '/api/auth/discord' && request.method === 'POST') {
+        return await handleDiscordAuth(request, env, corsHeaders);
+      }
+      
       if (path === '/api/auth/test' && request.method === 'GET') {
         return await handleAuthTest(request, env, corsHeaders);
       }
@@ -61,6 +82,7 @@ export default {
         endpoints: [
           'GET /api/setup - Initialize database',
           'POST /api/auth/signup - User registration',
+          'POST /api/auth/discord - Discord OAuth authentication',
           'GET /api/auth/test - Test authentication'
         ]
       }), {
@@ -81,22 +103,197 @@ export default {
   }
 };
 
+// Discord authentication handler
+async function handleDiscordAuth(request: Request, env: any, corsHeaders: any): Promise<Response> {
+  try {
+    const body: DiscordAuthRequest = await request.json();
+    const { discordUser, accessToken } = body;
+
+    if (!discordUser || !discordUser.id || !accessToken) {
+      return new Response(JSON.stringify({
+        error: 'Missing Discord user data or access token'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const db = env.DB;
+    
+    // Check if user already exists by Discord ID
+    let user = await db.prepare(
+      'SELECT * FROM users WHERE discord_id = ?'
+    ).bind(discordUser.id).first();
+
+    const now = new Date().toISOString();
+    
+    if (!user) {
+      // Create new user with Discord data
+      const userId = crypto.randomUUID();
+      const username = discordUser.username;
+      const email = discordUser.email || `${discordUser.username}@discord.local`;
+      const fullName = discordUser.global_name || discordUser.username;
+      const avatarUrl = discordUser.avatar 
+        ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+        : null;
+      
+      // Check if username or email already exists
+      const existingUser = await db.prepare(
+        'SELECT id FROM users WHERE email = ? OR username = ?'
+      ).bind(email, username).first();
+
+      if (existingUser) {
+        // Update existing user with Discord data
+        await db.prepare(`
+          UPDATE users SET 
+            discord_id = ?,
+            avatar_url = ?,
+            is_verified = ?,
+            updated_at = ?
+          WHERE id = ?
+        `).bind(
+          discordUser.id,
+          avatarUrl,
+          discordUser.verified ? 1 : 0,
+          now,
+          existingUser.id
+        ).run();
+        
+        user = await db.prepare('SELECT * FROM users WHERE id = ?').bind(existingUser.id).first();
+      } else {
+        // Create completely new user
+        await db.prepare(`
+          INSERT INTO users (
+            id, email, username, full_name, avatar_url, discord_id, 
+            is_verified, verification_level, created_at, updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          userId, email, username, fullName, avatarUrl, discordUser.id,
+          discordUser.verified ? 1 : 0, 1, now, now
+        ).run();
+        
+        user = await db.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
+      }
+    } else {
+      // Update existing Discord user's data
+      const avatarUrl = discordUser.avatar 
+        ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+        : user.avatar_url;
+      
+      await db.prepare(`
+        UPDATE users SET 
+          avatar_url = ?,
+          is_verified = ?,
+          updated_at = ?
+        WHERE discord_id = ?
+      `).bind(
+        avatarUrl,
+        discordUser.verified ? 1 : 0,
+        now,
+        discordUser.id
+      ).run();
+      
+      user = await db.prepare('SELECT * FROM users WHERE discord_id = ?').bind(discordUser.id).first();
+    }
+
+    // Store or update account information
+    await db.prepare(`
+      INSERT OR REPLACE INTO accounts (
+        id, user_id, type, provider, provider_account_id,
+        access_token, token_type, scope
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      `discord_${user.id}`,
+      user.id,
+      'oauth',
+      'discord',
+      discordUser.id,
+      accessToken,
+      'Bearer',
+      'identify email guilds'
+    ).run();
+
+    return new Response(JSON.stringify({
+      message: 'Discord authentication successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        fullName: user.full_name,
+        avatarUrl: user.avatar_url,
+        discordId: user.discord_id,
+        isVerified: Boolean(user.is_verified),
+        verificationLevel: user.verification_level,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at
+      }
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Discord auth error:', error);
+    return new Response(JSON.stringify({
+      error: 'Discord authentication failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+}
+
 // Database setup
 async function handleSetup(env: any, corsHeaders: any): Promise<Response> {
   try {
     const db = env.DB;
     
-    // Check if tables exist
+    // Check if tables exist and have Discord support
     try {
-      await db.prepare('SELECT 1 FROM users LIMIT 1').run();
+      await db.prepare('SELECT discord_id FROM users LIMIT 1').run();
       return new Response(JSON.stringify({
-        message: 'Database tables already exist',
+        message: 'Database tables already exist with Discord support',
         status: 'ready'
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     } catch {
+      // Either tables don't exist or don't have Discord fields
+      console.log('Creating/updating database tables...');
+      
+      // Check if users table exists at all
+      let tableExists = false;
+      try {
+        await db.prepare('SELECT 1 FROM users LIMIT 1').run();
+        tableExists = true;
+        console.log('Users table exists, adding Discord fields...');
+        
+        // Add missing Discord columns
+        try {
+          await db.prepare('ALTER TABLE users ADD COLUMN avatar_url TEXT').run();
+        } catch (e) { console.log('avatar_url column may already exist'); }
+        
+        try {
+          await db.prepare('ALTER TABLE users ADD COLUMN bio TEXT').run();
+        } catch (e) { console.log('bio column may already exist'); }
+        
+        try {
+          await db.prepare('ALTER TABLE users ADD COLUMN discord_id TEXT UNIQUE').run();
+        } catch (e) { console.log('discord_id column may already exist'); }
+        
+        return new Response(JSON.stringify({
+          message: 'Database tables updated with Discord support',
+          status: 'updated'
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch {
+        // Tables don't exist, create them completely
       // Tables don't exist, create them
       console.log('Creating database tables...');
       
@@ -108,6 +305,9 @@ async function handleSetup(env: any, corsHeaders: any): Promise<Response> {
           username TEXT NOT NULL UNIQUE,
           full_name TEXT NOT NULL,
           password TEXT,
+          avatar_url TEXT,
+          bio TEXT,
+          discord_id TEXT UNIQUE,
           cultural_background TEXT,
           is_verified INTEGER DEFAULT 0,
           verification_level INTEGER DEFAULT 1,
@@ -137,6 +337,7 @@ async function handleSetup(env: any, corsHeaders: any): Promise<Response> {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
+      }
     }
     
   } catch (error) {

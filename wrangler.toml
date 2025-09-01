@@ -31,6 +31,16 @@ vars = { NODE_ENV = "development" }
 name = "etherith-prod"
 vars = { NODE_ENV = "production" }
 
+# Production environment with D1 database
+[env.production-d1]
+name = "etherith-prod-d1"
+vars = { NODE_ENV = "production" }
+
+[[env.production-d1.d1_databases]]
+binding = "DB"
+database_name = "etherith-db"
+database_id = "042a5e9c-d027-42e9-aeab-cf5302a77af7"
+
 # KV for caching (optional - can be added later)
 # [[kv_namespaces]]
 # binding = "CACHE"

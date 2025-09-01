@@ -1,11 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // For local development, don't use export mode
-  // output: 'export',
-  // trailingSlash: true,
-  // skipTrailingSlashRedirect: true,
-  // distDir: 'dist',
+  // Remove static export to allow dynamic routes like authentication
+  // output: 'export', // Commented out to allow dynamic routes
+  
+  // Keep other Cloudflare Pages optimizations
+  trailingSlash: true,
+  skipTrailingSlashRedirect: true,
+  distDir: 'dist',
   
   images: {
     unoptimized: true,

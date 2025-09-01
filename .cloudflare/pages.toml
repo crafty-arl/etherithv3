@@ -1,0 +1,13 @@
+[build]
+command = "npm run build"
+output_directory = ".next"
+
+[env.production]
+name = "etherith-prod"
+variables = { NODE_ENV = "production" }
+
+[env.production.d1_databases]
+DB = { database_name = "etherith-db", database_id = "042a5e9c-d027-42e9-aeab-cf5302a77af7" }
+
+[env.production.variables]
+NODE_ENV = "production"

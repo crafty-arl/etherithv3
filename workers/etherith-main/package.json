@@ -1,0 +1,18 @@
+{
+  "name": "etherith-main-worker",
+  "version": "1.0.0",
+  "description": "Etherith Main Worker - Discord OAuth and D1 Database Integration",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": ["cloudflare", "workers", "d1", "discord", "oauth"],
+  "author": "Etherith Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250830.0",
+    "wrangler": "^3.0.0"
+  }
+}
