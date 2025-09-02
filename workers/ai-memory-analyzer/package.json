@@ -6,7 +6,9 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "node test-ai-worker.js",
+    "test:local": "node test-local.js"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250830.0",

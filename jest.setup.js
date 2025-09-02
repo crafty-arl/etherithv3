@@ -26,6 +26,11 @@ Object.defineProperty(global, 'crypto', {
   },
 })
 
+// Mock DOM methods for testing
+if (typeof Element !== 'undefined') {
+  Element.prototype.scrollIntoView = jest.fn();
+}
+
 // Suppress console.error in tests unless needed
 const originalError = console.error
 beforeAll(() => {
