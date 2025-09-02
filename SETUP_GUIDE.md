@@ -1,323 +1,315 @@
-# Etherith Setup Guide
+# 🚀 Etherith D1 Database Setup Guide
 
-This guide will help you set up Etherith for local development and production deployment on Cloudflare Pages.
+Based on Cloudflare's official documentation, this guide will help you properly configure your D1 database and resolve connection issues.
 
-## 🏃‍♂️ Quick Setup (5 Minutes)
+## 🔍 **Key Issues Identified from Cloudflare Documentation:**
 
-### 1. Prerequisites Check
+1. **Binding Access Pattern**: D1 databases should be accessed via `env.DB`, not `globalThis.DB`
+2. **Environment Configuration**: Proper environment-specific configurations are required
+3. **Database Schema**: Database tables must be created before use
 
-```bash
-# Check Node.js version (18+ required)
-node --version
+## 📋 **Step-by-Step Setup**
 
-# Check npm version
-npm --version
+### **Step 1: Verify Your D1 Database**
 
-# Check git installation
-git --version
-```
-
-### 2. Project Setup
+First, check if your D1 database exists and get its details:
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd etherith
+# List all D1 databases
+wrangler d1 list
 
-# Install dependencies
-npm install
-
-# Copy environment file
-cp .env.example .env.local
+# Get specific database info
+wrangler d1 info etherith-db
 ```
 
-### 3. Environment Configuration
+### **Step 2: Test D1 Database Connection**
 
-Edit `.env.local` with your configuration:
+Test basic connectivity to your D1 database:
 
 ```bash
-# Essential for local development
-NEXTAUTH_SECRET="generate-a-long-random-string-here"
-NEXTAUTH_URL="http://localhost:3000"
+# Test basic connection
+wrangler d1 execute etherith-db --command "SELECT 1"
 
-# For Discord OAuth (optional for basic setup)
-DISCORD_CLIENT_ID="your-discord-app-id"
-DISCORD_CLIENT_SECRET="your-discord-app-secret"
+# List existing tables
+wrangler d1 execute etherith-db --command "SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
-### 4. Database Setup
+### **Step 3: Create Database Schema**
+
+If no tables exist, create them using the provided schema:
 
 ```bash
-# Generate Drizzle migrations
-npm run db:generate
+# Apply the schema file
+wrangler d1 execute etherith-db --file=./schema.sql
 
-# The local SQLite database (dev.db) will be created automatically
+# Verify tables were created
+wrangler d1 execute etherith-db --command "SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
-### 5. Start Development
+### **Step 4: Verify Wrangler Configuration**
 
-```bash
-# Start the development server
-npm run dev
-
-# Open your browser to http://localhost:3000
-```
-
-## 🔐 Discord OAuth Setup
-
-### 1. Create Discord Application
-
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
-2. Click "New Application"
-3. Name it "Etherith Dev" (or your preferred name)
-4. Go to "OAuth2" section
-
-### 2. Configure OAuth2
-
-1. **Redirect URIs**: Add `http://localhost:3000/api/auth/callback/discord`
-2. **Scopes**: Select `identify`, `email`, `guilds`
-3. Copy **Client ID** and **Client Secret**
-4. Add them to your `.env.local`:
-
-```bash
-DISCORD_CLIENT_ID="your-client-id-here"
-DISCORD_CLIENT_SECRET="your-client-secret-here"
-```
-
-## 🌐 Cloudflare Setup for Production
-
-### 1. Install Wrangler CLI
-
-```bash
-npm install -g wrangler
-```
-
-### 2. Authenticate with Cloudflare
-
-```bash
-wrangler login
-```
-
-### 3. Create D1 Database
-
-```bash
-# Create the production database
-wrangler d1 create etherith-db
-
-# Create development database (optional)
-wrangler d1 create etherith-dev-db
-```
-
-### 4. Update wrangler.toml
-
-Copy the database ID from the command output and update `wrangler.toml`:
+Ensure your `wrangler.toml` has the correct configuration:
 
 ```toml
+name = "etherith"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database - Cloudflare's native SQLite database
 [[d1_databases]]
 binding = "DB"
 database_name = "etherith-db"
-database_id = "your-database-id-here"  # Replace this
+database_id = "042a5e9c-d027-42e9-aeab-cf5302a77af7"
+
+# Environment-specific configurations
+[env.preview]
+name = "etherith-preview"
+vars = { NODE_ENV = "development" }
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "etherith-db"
+database_id = "042a5e9c-d027-42e9-aeab-cf5302a77af7"
+
+[env.production]  
+name = "etherith-production"
+vars = { NODE_ENV = "production" }
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "etherith-db"
+database_id = "042a5e9c-d027-42e9-aeab-cf5302a77af7"
 ```
 
-### 5. Run Migrations
+### **Step 5: Test Your Worker**
+
+Test your worker with the D1 database:
 
 ```bash
-# Apply migrations to production database
-wrangler d1 migrations apply etherith-db --remote
+# Start local development
+wrangler dev
 
-# Apply to development database (optional)
-wrangler d1 migrations apply etherith-dev-db --remote
+# In another terminal, test the health endpoint
+curl http://localhost:8787/health
+
+# Test the debug endpoint
+curl http://localhost:8787/api/debug
 ```
 
-## 🔧 External Services Setup
+### **Step 6: Monitor Logs**
 
-### 1. Pinata (IPFS Storage)
-
-1. Sign up at [Pinata.cloud](https://pinata.cloud/)
-2. Go to API Keys section
-3. Create new API key with admin permissions
-4. Add to `.env.local`:
+Watch the worker logs for any errors:
 
 ```bash
-PINATA_API_KEY="your-api-key"
-PINATA_SECRET_API_KEY="your-secret-key"
+# In a new terminal, monitor logs
+wrangler tail etherith
 ```
 
-### 2. OpenAI (AI Processing)
+## 🔧 **Troubleshooting Common Issues**
 
-1. Get API key from [OpenAI](https://platform.openai.com/api-keys)
-2. Add to `.env.local`:
+### **Issue 1: "D1 database not available"**
+
+**Symptoms:**
+- `env.DB` is undefined
+- Database queries fail
+
+**Solutions:**
+1. **Check binding name**: Ensure your binding is named `DB` in `wrangler.toml`
+2. **Verify database ID**: Confirm the database ID matches your actual D1 database
+3. **Check environment**: Ensure you're running in the correct environment
 
 ```bash
-OPENAI_API_KEY="your-openai-key"
+# Verify database exists
+wrangler d1 list
+
+# Check binding configuration
+wrangler d1 info etherith-db
 ```
 
-## 🚀 Cloudflare Pages Deployment
+### **Issue 2: "Table doesn't exist"**
 
-### 1. GitHub Repository Setup
+**Symptoms:**
+- SQL errors about missing tables
+- Database queries fail
 
-1. Push your code to GitHub
-2. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/)
-3. Navigate to "Pages"
-4. Click "Create a project"
-5. Connect to GitHub and select your repository
-
-### 2. Build Configuration
-
-Set these build settings in Cloudflare Pages:
-
-- **Framework preset**: Next.js (Static HTML Export)
-- **Build command**: `npm run build`
-- **Build output directory**: `dist`
-- **Root directory**: `/` (or your project root)
-
-### 3. Environment Variables
-
-In Cloudflare Pages settings, add these environment variables:
+**Solutions:**
+1. **Create tables**: Run the schema file
+2. **Verify schema**: Check table structure
 
 ```bash
-# Production URLs
-NEXTAUTH_URL=https://your-domain.pages.dev
-NEXTAUTH_SECRET=your-production-secret
+# Create tables
+wrangler d1 execute etherith-db --file=./schema.sql
 
-# Discord OAuth (production app)
-DISCORD_CLIENT_ID=your-production-discord-client-id
-DISCORD_CLIENT_SECRET=your-production-discord-client-secret
-
-# External services
-PINATA_API_KEY=your-pinata-key
-PINATA_SECRET_API_KEY=your-pinata-secret
-OPENAI_API_KEY=your-openai-key
-
-# Cloudflare
-CLOUDFLARE_ACCOUNT_ID=your-account-id
-CLOUDFLARE_API_TOKEN=your-api-token
+# Verify tables exist
+wrangler d1 execute etherith-db --command "SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
-### 4. GitHub Actions Setup
+### **Issue 3: "Binding not found"**
 
-The repository includes GitHub Actions for CI/CD. Add these secrets to your GitHub repository:
+**Symptoms:**
+- Worker can't access `env.DB`
+- Environment variables not loading
 
-1. Go to GitHub repository → Settings → Secrets and variables → Actions
-2. Add these secrets:
+**Solutions:**
+1. **Check wrangler.toml**: Ensure D1 configuration is correct
+2. **Restart worker**: Stop and restart `wrangler dev`
+3. **Verify deployment**: Ensure configuration is deployed
 
 ```bash
-NEXTAUTH_SECRET=your-secret
-DISCORD_CLIENT_ID=your-discord-id
-DISCORD_CLIENT_SECRET=your-discord-secret
-PINATA_API_KEY=your-pinata-key
-PINATA_SECRET_API_KEY=your-pinata-secret
-OPENAI_API_KEY=your-openai-key
-CLOUDFLARE_API_TOKEN=your-cloudflare-token
-CLOUDFLARE_ACCOUNT_ID=your-account-id
+# Stop worker (Ctrl+C)
+# Restart worker
+wrangler dev
+
+# Or deploy to production
+wrangler deploy
 ```
 
-## 🧪 Testing Setup
+## 🧪 **Testing Your Setup**
 
-### 1. Run Tests Locally
+### **Test 1: Basic Connectivity**
 
 ```bash
-# Run all tests
-npm run test
+# Test worker health
+curl http://localhost:8787/health
 
-# Run with coverage
-npm run test:coverage
-
-# Watch mode for development
-npm run test:watch
+# Expected response:
+{
+  "status": "healthy",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "d1Available": true,
+  "environment": "development"
+}
 ```
 
-### 2. Test Configuration
-
-The project is configured with:
-- Jest for unit testing
-- @testing-library/react for component testing
-- 80% coverage requirement
-- Automatic mocking for external dependencies
-
-## 🔍 Development Tools
-
-### 1. Database Management
+### **Test 2: D1 Database Access**
 
 ```bash
-# View database in Drizzle Studio
-npm run db:studio
+# Test debug endpoint
+curl http://localhost:8787/api/debug
 
-# Push schema changes without migrations (dev only)
-npm run db:push
-
-# Generate new migrations
-npm run db:generate
+# Expected response should show:
+# - d1DatabaseAvailable: true
+# - d1Status: "Available"
+# - d1Tables: [list of tables]
 ```
 
-### 2. Code Quality
+### **Test 3: Database Queries**
 
 ```bash
-# Run ESLint
-npm run lint
+# Test D1 query endpoint
+curl -X POST http://localhost:8787/api/debug \
+  -H "Content-Type: application/json" \
+  -d '{"action":"test-d1-query","query":"SELECT COUNT(*) as count FROM users"}'
 
-# Fix linting issues
-npm run lint:fix
-
-# TypeScript checking
-npm run type-check
+# Expected response:
+{
+  "success": true,
+  "result": [{"count": 0}],
+  "meta": {...}
+}
 ```
 
-## 🐛 Troubleshooting
+## 📊 **Expected Database Tables**
 
-### Common Issues
+After running the schema, you should have these tables:
 
-1. **"Cannot find module '@/lib/db'"**
-   - Ensure TypeScript paths are configured correctly
-   - Restart your development server
+1. **`users`** - User accounts and profiles
+2. **`sessions`** - NextAuth session management
+3. **`accounts`** - OAuth provider connections
+4. **`verification_tokens`** - Email verification
 
-2. **Discord OAuth not working**
-   - Check redirect URIs match exactly
-   - Verify client ID and secret are correct
-   - Ensure NEXTAUTH_URL is set correctly
+## 🔐 **Environment Variables**
 
-3. **Database connection issues**
-   - For local: Check if `dev.db` file is created
-   - For production: Verify D1 database ID in wrangler.toml
+Ensure these environment variables are set:
 
-4. **Build failures on Cloudflare Pages**
-   - Check build output directory is set to `dist`
-   - Verify all environment variables are set
-   - Check build logs for specific errors
+```bash
+# Required for Discord OAuth
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_CLIENT_SECRET=your_discord_client_secret
 
-### Getting Help
+# Required for NextAuth
+NEXTAUTH_SECRET=your_nextauth_secret
+NEXTAUTH_URL=http://localhost:8787  # for local development
+```
 
-1. Check the main README.md for architecture details
-2. Review test files for usage examples
-3. Check GitHub Issues for known problems
-4. Review Cloudflare Pages build logs for deployment issues
+## 🚀 **Deployment**
 
-## 📈 Performance Tips
+### **Local Development**
+```bash
+wrangler dev
+```
 
-1. **Local Development**
-   - Use `npm run dev` with hot reload
-   - Keep the local SQLite database for faster queries
-   - Use Jest watch mode for continuous testing
+### **Production Deployment**
+```bash
+wrangler deploy
+```
 
-2. **Production**
-   - Cloudflare Pages provides global CDN
-   - D1 database is replicated globally
-   - Images are automatically optimized
+### **Preview Deployment**
+```bash
+wrangler deploy --env preview
+```
 
-## 🔐 Security Considerations
+## 📝 **Monitoring and Debugging**
 
-1. **Environment Variables**
-   - Never commit `.env.local` to git
-   - Use different secrets for development and production
-   - Rotate API keys regularly
+### **View Worker Logs**
+```bash
+# Local development logs
+wrangler dev
 
-2. **Authentication**
-   - Use strong NEXTAUTH_SECRET (32+ characters)
-   - Configure Discord OAuth with production domain
-   - Implement proper CORS settings
+# Production logs
+wrangler tail etherith
 
----
+# Preview logs
+wrangler tail etherith --env preview
+```
 
-That's it! You now have Etherith running locally and configured for production deployment. 
+### **Debug Endpoints**
+- `/health` - Basic health check
+- `/api/debug` - Comprehensive debugging information
+- `/api/debug` (POST) - Test D1 queries
 
-For more detailed information, check the main README.md file.
+## 🆘 **Getting Help**
+
+If you're still experiencing issues:
+
+1. **Check the debug page** at `/debug` for detailed information
+2. **Run the D1 test script** with `node scripts/test-d1.js`
+3. **Check wrangler logs** with `wrangler tail etherith`
+4. **Verify your configuration** matches the examples above
+5. **Check Cloudflare Workers documentation** for D1 and authentication
+
+## 🔗 **Useful Commands Reference**
+
+```bash
+# D1 Database Management
+wrangler d1 list                    # List all D1 databases
+wrangler d1 info <db-name>          # Get database details
+wrangler d1 execute <db-name> --command "SELECT 1"  # Execute SQL command
+wrangler d1 execute <db-name> --file=./schema.sql   # Execute SQL file
+
+# Worker Management
+wrangler dev                        # Start local development
+wrangler deploy                     # Deploy to production
+wrangler deploy --env preview       # Deploy to preview
+wrangler tail <worker-name>         # Monitor logs
+wrangler whoami                     # Check authentication
+
+# Environment Management
+wrangler secret put <name>          # Set secret
+wrangler secret list                # List secrets
+```
+
+## ✅ **Success Checklist**
+
+- [ ] D1 database exists and is accessible
+- [ ] Database schema is applied (tables exist)
+- [ ] Worker can access `env.DB`
+- [ ] Health endpoint returns `d1Available: true`
+- [ ] Debug endpoint shows database tables
+- [ ] Database queries execute successfully
+- [ ] Worker logs show successful D1 connections
+- [ ] Environment variables are properly set
+- [ ] Discord OAuth configuration is complete
+
+Once all items are checked, your D1 database should be fully functional! 🎉

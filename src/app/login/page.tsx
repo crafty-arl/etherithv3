@@ -172,8 +172,8 @@ export default function LoginPage() {
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 p-8 rounded-3xl border"
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-md w-full space-y-6 md:space-y-8 p-6 md:p-8 rounded-3xl border"
              style={{
                background: 'rgba(255, 255, 255, 0.95)',
                backdropFilter: 'blur(20px) saturate(180%)',
@@ -185,7 +185,7 @@ export default function LoginPage() {
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6 }}
-              className="text-4xl font-bold mb-2 font-playfair"
+              className="text-3xl sm:text-4xl font-bold mb-2 font-playfair"
               style={{
                 background: 'linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 50%, #1a1a1a 100%)',
                 WebkitBackgroundClip: 'text',
@@ -198,7 +198,7 @@ export default function LoginPage() {
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-lg font-inter"
+              className="text-base sm:text-lg font-inter"
               style={{ color: '#8b7355' }}
             >
               Ancestral Memory Preservation
@@ -209,7 +209,7 @@ export default function LoginPage() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="space-y-6"
+            className="space-y-4 md:space-y-6"
           >
             {/* Error Display */}
             {error && (
@@ -275,7 +275,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="w-full text-gray-700 py-4 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 font-inter border"
+                  className="w-full text-gray-700 py-3 md:py-4 px-4 md:px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 font-inter border text-sm sm:text-base"
                   style={{
                     background: 'rgba(255, 255, 255, 0.95)',
                     borderColor: '#d2b48c',
@@ -303,7 +303,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleDiscordLogin}
-                  className="w-full text-white py-4 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 font-inter"
+                  className="w-full text-white py-3 md:py-4 px-4 md:px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 font-inter text-sm sm:text-base"
                   style={{
                     background: 'linear-gradient(145deg, #5865F2, #4752C4)',
                     boxShadow: '0 6px 20px rgba(88, 101, 242, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1)'
@@ -340,7 +340,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowCredentialsForm(true)}
-                  className="w-full text-gray-700 py-4 px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 font-inter border"
+                  className="w-full text-gray-700 py-3 md:py-4 px-4 md:px-6 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 font-inter border text-sm sm:text-base"
                   style={{
                     background: 'rgba(255, 255, 255, 0.95)',
                     borderColor: '#d2b48c',

@@ -420,12 +420,13 @@ export default function MemoryWeaverPage() {
              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(0, 0, 0, 0.05)',
              borderBottom: '1px solid rgba(255, 255, 255, 0.3)'
            }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2 text-stone-600 hover:text-stone-900 transition-colors">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Link href="/" className="flex items-center space-x-1 sm:space-x-2 text-stone-600 hover:text-stone-900 transition-colors text-sm sm:text-base">
                 <ArrowLeft className="w-5 h-5" />
-                <span>Back to Home</span>
+                <span className="hidden sm:inline">Back to Home</span>
+                <span className="sm:hidden">Back</span>
               </Link>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden"
                    style={{
@@ -435,12 +436,12 @@ export default function MemoryWeaverPage() {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-stone-900 font-playfair">Memory Weaver</h1>
-                <p className="text-sm text-stone-600">AI-Powered Memory Preservation</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-stone-900 font-playfair">Memory Weaver</h1>
+                <p className="text-xs sm:text-sm text-stone-600">AI-Powered Memory Preservation</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <AuthStatus />
               <button 
                 onClick={() => setShowHelp(!showHelp)}
@@ -457,14 +458,14 @@ export default function MemoryWeaverPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
         {/* Main Prompt Section */}
-        <div className="text-center max-w-4xl mx-auto mb-16">
+        <div className="text-center max-w-4xl mx-auto mb-8 md:mb-16">
           <motion.h1
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6 }}
-            className="text-5xl md:text-7xl font-bold mb-8 font-playfair leading-tight"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-6 md:mb-8 font-playfair leading-tight"
             style={{
               background: 'linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 50%, #1a1a1a 100%)',
               WebkitBackgroundClip: 'text',
@@ -478,7 +479,7 @@ export default function MemoryWeaverPage() {
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-xl md:text-2xl text-stone-700 mb-6 font-inter leading-relaxed"
+            className="text-lg sm:text-xl md:text-2xl text-stone-700 mb-4 md:mb-6 font-inter leading-relaxed px-4"
           >
             Build real, working memories just by describing them
           </motion.p>
@@ -486,14 +487,14 @@ export default function MemoryWeaverPage() {
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg text-stone-600 font-inter"
+            className="text-base sm:text-lg text-stone-600 font-inter px-4"
           >
             Memory Weaver helps you capture and preserve ancestral memories with AI assistance
           </motion.p>
         </div>
 
         {/* Central Prompt Input */}
-        <div className="max-w-3xl mx-auto mb-16">
+        <div className="max-w-3xl mx-auto mb-8 md:mb-16">
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -501,7 +502,7 @@ export default function MemoryWeaverPage() {
             className="space-y-6"
           >
                          {/* Action Icons Above Text Box */}
-             <div className="flex justify-center space-x-8">
+             <div className="flex justify-center space-x-4 sm:space-x-6 md:space-x-8">
                <button
                  onClick={() => fileInputRef.current?.click()}
                  className="flex flex-col items-center space-y-2 p-4 rounded-2xl hover:bg-stone-100 transition-all duration-300 group"
@@ -514,7 +515,7 @@ export default function MemoryWeaverPage() {
                       }}>
                    <Camera className="w-8 h-8 text-stone-600" />
                  </div>
-                 <span className="text-sm font-medium text-stone-700">Add Media</span>
+                 <span className="text-xs sm:text-sm font-medium text-stone-700">Add Media</span>
                </button>
                
                <button className="flex flex-col items-center space-y-2 p-4 rounded-2xl hover:bg-stone-100 transition-all duration-300 group" title="Fill out memory details manually">
@@ -525,7 +526,7 @@ export default function MemoryWeaverPage() {
                       }}>
                    <BookOpen className="w-8 h-8 text-stone-600" />
                  </div>
-                 <span className="text-sm font-medium text-stone-700">Manual Input</span>
+                 <span className="text-xs sm:text-sm font-medium text-stone-700">Manual Input</span>
                </button>
              </div>
 
@@ -538,8 +539,8 @@ export default function MemoryWeaverPage() {
                 placeholder={conversationState.hasGreeted 
                   ? "Continue sharing your memory..."
                   : "Tell me about a memory you'd like to preserve..."}
-                className="w-full p-6 text-lg border border-stone-300 rounded-2xl focus:ring-2 focus:ring-stone-500 focus:border-transparent resize-none shadow-lg"
-                rows={conversationState.hasGreeted ? 2 : 4}
+                className="w-full p-4 md:p-6 text-base md:text-lg border border-stone-300 rounded-2xl focus:ring-2 focus:ring-stone-500 focus:border-transparent resize-none shadow-lg"
+                rows={conversationState.hasGreeted ? 2 : 3}
                 style={{
                   background: 'rgba(255, 255, 255, 0.9)',
                   backdropFilter: 'blur(20px) saturate(180%)',
@@ -551,7 +552,7 @@ export default function MemoryWeaverPage() {
                 disabled={!inputValue.trim() || isProcessing}
                 aria-label="Send memory"
                 title={isProcessing ? 'Processing...' : 'Send memory'}
-                className="absolute right-4 top-4 p-3 rounded-xl text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="absolute right-2 md:right-4 top-2 md:top-4 p-2 md:p-3 rounded-xl text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   background: 'linear-gradient(145deg, #1a1a1a, #2d2d2d)',
                   boxShadow: '0 4px 15px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.2)'
@@ -570,9 +571,9 @@ export default function MemoryWeaverPage() {
                 }}
               >
                 {isProcessing ? (
-                  <div className="w-5 h-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <div className="w-4 h-4 md:w-5 md:h-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 ) : (
-                  <Send className="w-5 h-5" />
+                  <Send className="w-4 h-4 md:w-5 md:h-5" />
                 )}
               </button>
             </div>
@@ -596,17 +597,17 @@ export default function MemoryWeaverPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="max-w-4xl mx-auto mb-16"
+              className="max-w-4xl mx-auto mb-8 md:mb-16 px-4"
             >
-              <div className="bg-white rounded-3xl p-8 shadow-xl border"
+              <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl border"
                    style={{
                      background: 'rgba(255, 255, 255, 0.9)',
                      backdropFilter: 'blur(20px) saturate(180%)',
                      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(0, 0, 0, 0.05)',
                      borderColor: 'rgba(255, 255, 255, 0.3)'
                    }}>
-                <h3 className="text-2xl font-bold text-stone-900 mb-6 font-playfair text-center">How to Use Memory Weaver</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <h3 className="text-xl sm:text-2xl font-bold text-stone-900 mb-4 md:mb-6 font-playfair text-center">How to Use Memory Weaver</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                                      <div className="space-y-4">
                      <h4 className="text-lg font-semibold text-stone-800 flex items-center space-x-2">
                        <Heart className="w-5 h-5 text-stone-600" />
@@ -659,7 +660,7 @@ export default function MemoryWeaverPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="max-w-4xl mx-auto mb-16"
+            className="max-w-4xl mx-auto mb-8 md:mb-16 px-4"
           >
             <div className="bg-white rounded-3xl shadow-xl border"
                  style={{
@@ -669,7 +670,7 @@ export default function MemoryWeaverPage() {
                    borderColor: 'rgba(255, 255, 255, 0.3)'
                  }}>
               {/* Chat Header */}
-              <div className="p-6 border-b border-stone-200">
+              <div className="p-4 md:p-6 border-b border-stone-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 rounded-full flex items-center justify-center"
@@ -701,7 +702,7 @@ export default function MemoryWeaverPage() {
               </div>
 
               {/* Chat Messages */}
-              <div className="max-h-[500px] overflow-y-auto p-6 space-y-4">
+              <div className="max-h-[400px] md:max-h-[500px] overflow-y-auto p-4 md:p-6 space-y-4">
                 <AnimatePresence>
                   {messages.map((message) => (
                     <motion.div
@@ -777,7 +778,7 @@ export default function MemoryWeaverPage() {
         )}
 
                  {/* Quick Actions Grid */}
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto px-4">
            <motion.div
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
@@ -791,8 +792,8 @@ export default function MemoryWeaverPage() {
                   }}>
                <Camera className="w-10 h-10 text-stone-600" />
              </div>
-             <h3 className="text-xl font-semibold text-stone-900 mb-3">Upload Media</h3>
-             <p className="text-stone-600 text-sm">Add photos, videos, and audio to enrich your memories</p>
+             <h3 className="text-lg sm:text-xl font-semibold text-stone-900 mb-3">Upload Media</h3>
+             <p className="text-stone-600 text-xs sm:text-sm">Add photos, videos, and audio to enrich your memories</p>
            </motion.div>
 
            <motion.div
@@ -808,8 +809,8 @@ export default function MemoryWeaverPage() {
                   }}>
                <Mic className="w-10 h-10 text-stone-600" />
              </div>
-             <h3 className="text-xl font-semibold text-stone-900 mb-3">Voice Stories</h3>
-             <p className="text-stone-600 text-sm">Record oral histories and personal narratives</p>
+             <h3 className="text-lg sm:text-xl font-semibold text-stone-900 mb-3">Voice Stories</h3>
+             <p className="text-stone-600 text-xs sm:text-sm">Record oral histories and personal narratives</p>
            </motion.div>
 
            <motion.div
@@ -825,8 +826,8 @@ export default function MemoryWeaverPage() {
                   }}>
                <Users className="w-10 h-10 text-stone-600" />
              </div>
-             <h3 className="text-xl font-semibold text-stone-900 mb-3">Share Heritage</h3>
-             <p className="text-stone-600 text-sm">Connect with family and community members</p>
+             <h3 className="text-lg sm:text-xl font-semibold text-stone-900 mb-3">Share Heritage</h3>
+             <p className="text-stone-600 text-xs sm:text-sm">Connect with family and community members</p>
            </motion.div>
          </div>
       </div>

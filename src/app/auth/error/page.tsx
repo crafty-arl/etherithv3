@@ -56,6 +56,16 @@ function AuthErrorContent() {
             </p>
           </div>
 
+          {/* Debug Information */}
+          <div className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-3 rounded">
+            <p className="text-sm font-medium mb-2">Debug Information:</p>
+            <div className="text-xs space-y-1">
+              <p>NEXTAUTH_URL: {process.env.NEXT_PUBLIC_NEXTAUTH_URL || 'Not set'}</p>
+              <p>DISCORD_CLIENT_ID: {process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ? 'Set' : 'Not set'}</p>
+              <p>NODE_ENV: {process.env.NODE_ENV || 'Not set'}</p>
+            </div>
+          </div>
+
           <div className="flex flex-col space-y-3">
             <Link
               href="/auth/signin"

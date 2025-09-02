@@ -1,15 +1,10 @@
 import { NextAuthOptions } from 'next-auth'
 import DiscordProvider from 'next-auth/providers/discord'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { D1Adapter } from '@auth/d1-adapter'
-import { createDB } from '@/lib/db'
-import bcrypt from 'bcryptjs'
-import { eq } from 'drizzle-orm'
-import { users, accounts } from '@/lib/db/schema'
 
 export const authConfig: NextAuthOptions = {
-  // Use the official D1 adapter when available
-  adapter: typeof globalThis.DB !== 'undefined' ? D1Adapter(globalThis.DB) : undefined,
+  // For local development, we'll use JWT strategy but store data in D1 via API calls
+  adapter: undefined,
   
   providers: [
     DiscordProvider({
@@ -34,28 +29,42 @@ export const authConfig: NextAuthOptions = {
         }
 
         try {
-          const db = createDB(globalThis.DB)
-          const [user] = await db.select().from(users).where(eq(users.email, credentials.email)).limit(1)
+          // For local development, we'll call the Cloudflare Worker API
+          console.log('🔑 Credentials authorization attempt for:', credentials.email)
           
-          if (!user || !user.password) {
-            return null
-          }
+          // Call the Cloudflare Worker login endpoint
+          const response = await fetch('https://etherith-main.carl-6e7.workers.dev/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials)
+          });
 
-          // Verify password hash
-          const isValidPassword = await bcrypt.compare(credentials.password, user.password)
-          if (!isValidPassword) {
-            return null
+          if (response.ok) {
+            const data = await response.json() as {
+              success: boolean;
+              message: string;
+              user: {
+                id: string;
+                email: string;
+                fullName: string;
+                username: string;
+                avatarUrl?: string;
+                culturalBackground?: string;
+                isVerified: boolean;
+              };
+            };
+            return {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.fullName,
+              username: data.user.username,
+              image: data.user.avatarUrl,
+              culturalBackground: data.user.culturalBackground,
+              isVerified: data.user.isVerified
+            };
           }
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.fullName,
-            image: user.avatarUrl,
-            username: user.username,
-            culturalBackground: user.culturalBackground,
-            isVerified: user.isVerified,
-          }
+          
+          return null;
         } catch (error) {
           console.error('Authorization error:', error)
           return null
@@ -70,23 +79,28 @@ export const authConfig: NextAuthOptions = {
   },
 
   jwt: {
-    // Use a strong secret for JWT signing
     secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
-    // Set reasonable expiration
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 
   callbacks: {
     async session({ session, token }) {
+      console.log('📋 Session callback:', {
+        hasToken: !!token,
+        tokenSub: token.sub,
+        tokenUsername: (token as any).username,
+        sessionUser: session.user?.email
+      })
+      
       if (token && session.user) {
         return {
           ...session,
           user: {
             ...session.user,
             id: token.sub as string,
-            username: token.username as string,
-            culturalBackground: token.culturalBackground as string,
-            isVerified: token.isVerified as boolean,
+            username: (token as any).username || session.user.email?.split('@')[0],
+            culturalBackground: (token as any).culturalBackground || 'Default',
+            isVerified: (token as any).isVerified || false,
           } as typeof session.user & { 
             id: string;
             username: string;
@@ -99,82 +113,105 @@ export const authConfig: NextAuthOptions = {
     },
     
     async jwt({ token, account, profile, user }) {
+      console.log('🎫 JWT Callback triggered:', {
+        hasToken: !!token,
+        hasAccount: !!account,
+        hasProfile: !!profile,
+        hasUser: !!user,
+        provider: account?.provider,
+        nodeEnv: process.env.NODE_ENV,
+        tokenSub: token.sub
+      })
+      
       // Handle Discord-specific data
       if (account?.provider === 'discord' && profile) {
         try {
-          // Check if we're in a Cloudflare Workers environment with D1
-          if (typeof globalThis.DB === 'undefined') {
-            console.log('Local development: Storing Discord data in JWT token')
-            // In local development, store Discord data directly in the token
-            const discordProfile = profile as { id?: string; username?: string; email?: string; global_name?: string; avatar?: string; verified?: boolean }
-            
-            if (discordProfile.id) {
-              token.discordId = discordProfile.id
-              token.username = discordProfile.username || `discord_${discordProfile.id}`
-              token.email = discordProfile.email
-              token.name = discordProfile.global_name || discordProfile.username || 'Discord User'
-              token.picture = discordProfile.avatar 
-                ? `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png`
-                : undefined
-              token.isVerified = discordProfile.verified || false
+          console.log('🎮 Discord OAuth data received:', {
+            id: (profile as any).id,
+            username: (profile as any).username,
+            email: (profile as any).email,
+            global_name: (profile as any).global_name,
+            verified: (profile as any).verified
+          })
+          
+          // Store Discord data in D1 database via Cloudflare Worker API
+          const discordProfile = profile as { 
+            id?: string; 
+            username?: string; 
+            email?: string; 
+            global_name?: string; 
+            avatar?: string; 
+            verified?: boolean 
+          }
+          
+          if (discordProfile.email) {
+            try {
+              // Call Cloudflare Worker to store Discord user data
+              const response = await fetch('https://etherith-main.carl-6e7.workers.dev/api/auth/discord/store', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  discordId: discordProfile.id,
+                  email: discordProfile.email,
+                  username: discordProfile.username || discordProfile.global_name || 'discord_user',
+                  fullName: discordProfile.global_name || discordProfile.username || 'Discord User',
+                  avatar: discordProfile.avatar,
+                  verified: discordProfile.verified || false
+                })
+              });
+
+              if (response.ok) {
+                const data = await response.json() as {
+                  success: boolean;
+                  message: string;
+                  userId: string;
+                };
+                console.log('✅ Discord data stored in D1:', data);
+                
+                // Store Discord data in the JWT token
+                token.discordId = discordProfile.id
+                token.username = discordProfile.username || discordProfile.global_name || 'discord_user'
+                token.email = discordProfile.email
+                token.name = discordProfile.global_name || discordProfile.username || 'Discord User'
+                token.picture = discordProfile.avatar 
+                  ? `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png`
+                  : undefined
+                token.culturalBackground = 'Discord User'
+                token.isVerified = discordProfile.verified || false
+                token.sub = data.userId // Use the D1 database user ID
+                
+                console.log('✅ Discord data stored in token:', {
+                  discordId: token.discordId,
+                  username: token.username,
+                  email: token.email,
+                  name: token.name,
+                  userId: token.sub
+                })
+              } else {
+                console.error('❌ Failed to store Discord data in D1:', await response.text());
+              }
+            } catch (error) {
+              console.error('❌ Error calling Cloudflare Worker API:', error);
             }
-          } else {
-            // Cloudflare Workers environment - D1 adapter handles this automatically
-            console.log('Cloudflare Workers: D1 adapter will handle Discord data storage')
           }
         } catch (error) {
-          console.error('JWT Discord data fetch error:', error)
+          console.error('❌ Error handling Discord profile:', error)
         }
-      }
-      
-      if (user) {
-        token.sub = user.id
-        // Type assertion to handle custom user properties
-        const customUser = user as any
-        token.username = customUser.username
-        token.culturalBackground = customUser.culturalBackground
-        token.isVerified = customUser.isVerified
       }
       
       return token
     },
-
-    async signIn({ account, profile }) {
-      console.log('SignIn callback triggered:', { 
-        provider: account?.provider, 
+    
+    async signIn({ user, account, profile }) {
+      console.log('🔐 Sign in callback:', {
+        hasUser: !!user,
+        hasAccount: !!account,
         hasProfile: !!profile,
-        profileKeys: profile ? Object.keys(profile) : [],
-        nodeEnv: process.env.NODE_ENV,
-        hasDB: typeof globalThis.DB !== 'undefined'
+        provider: account?.provider,
+        nodeEnv: process.env.NODE_ENV
       })
       
-      if (account?.provider === 'discord' && profile) {
-        try {
-          // Check if we're in a Cloudflare Workers environment with D1
-          if (typeof globalThis.DB === 'undefined') {
-            console.log('Local development: Allowing Discord sign-in without database')
-            // In local development, allow the sign-in to proceed
-            // The JWT callback will handle storing Discord data in the token
-            return true
-          }
-          
-          // Cloudflare Workers environment - D1 adapter handles this automatically
-          console.log('Cloudflare Workers: D1 adapter will handle Discord sign-in')
-          return true
-        } catch (error) {
-          console.error('Discord sign-in error:', error)
-          // In development, allow the sign-in to proceed even if database operations fail
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Development mode: Allowing sign-in despite database error')
-            return true
-          }
-          return false
-        }
-      } else if (account?.provider === 'credentials') {
-        // For credentials signup, user should already exist
-        return true
-      }
-      
+      // Always allow sign in for now
       return true
     }
   },
@@ -182,38 +219,6 @@ export const authConfig: NextAuthOptions = {
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',
-  },
-
-  // Edge-compatible settings for Cloudflare Workers
-  useSecureCookies: process.env.NODE_ENV === 'production',
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-      }
-    },
-    callbackUrl: {
-      name: `next-auth.callback-url`,
-      options: {
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      }
-    },
-    csrfToken: {
-      name: `next-auth.csrf-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      }
-    }
   },
 
   debug: process.env.NODE_ENV === 'development',

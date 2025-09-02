@@ -1,336 +1,373 @@
 /**
  * Etherith Main Worker
- * Handles Discord OAuth and D1 database integration
+ * Simplified version with health check, debug, and authentication endpoints
  */
 
-interface DiscordProfile {
-  id: string;
+interface SignupData {
+  firstName: string;
+  lastName: string;
   username: string;
   email: string;
-  global_name?: string;
+  password: string;
+}
+
+interface LoginData {
+  email: string;
+  password: string;
+}
+
+interface DiscordStoreData {
+  discordId: string;
+  email: string;
+  username: string;
+  fullName: string;
   avatar?: string;
   verified: boolean;
 }
 
-interface User {
-  id: string;
-  email: string;
-  username: string;
-  fullName: string;
-  avatarUrl?: string;
-  discordId?: string;
-  isVerified: boolean;
-  verificationLevel: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export default {
-  async fetch(request: Request, env: any): Promise<Response> {
-    const url = new URL(request.url);
-    const path = url.pathname;
-
-    // CORS headers
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    };
-
-    // Handle preflight requests
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
-    }
-
+  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
     try {
-      // Route handling
-      if (path === '/api/setup' && request.method === 'GET') {
-        return await handleSetup(env, corsHeaders);
+      console.log('🚀 Worker request received:', {
+        url: request.url,
+        method: request.method,
+        hasDB: !!env.DB
+      });
+
+      const url = new URL(request.url);
+      const path = url.pathname;
+
+      // Health check endpoint
+      if (path === '/health') {
+        return new Response(JSON.stringify({
+          status: 'healthy',
+          timestamp: new Date().toISOString(),
+          d1Available: !!env.DB,
+          environment: 'production'
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
-      
-      if (path === '/api/auth/discord/callback' && request.method === 'GET') {
-        return await handleDiscordCallback(request, env, corsHeaders);
+
+      // Debug endpoint
+      if (path === '/api/debug') {
+        const debugInfo: {
+          timestamp: string;
+          environment: string;
+          isCloudflareWorkers: boolean;
+          d1DatabaseAvailable: boolean;
+          d1Status: string;
+          d1Tables: any;
+          d1Error: string | null;
+          userCount: any;
+        } = {
+          timestamp: new Date().toISOString(),
+          environment: 'production',
+          isCloudflareWorkers: true,
+          d1DatabaseAvailable: !!env.DB,
+          d1Status: 'Not Available',
+          d1Tables: null,
+          d1Error: null,
+          userCount: null
+        };
+
+        if (env.DB) {
+          try {
+            debugInfo.d1Status = 'Available';
+            
+            // Test D1 connection
+            const result = await env.DB.prepare('SELECT name FROM sqlite_master WHERE type="table"').all();
+            debugInfo.d1Tables = result.results;
+            
+            // Test user count
+            const userCount = await env.DB.prepare('SELECT COUNT(*) as count FROM users').first();
+            debugInfo.userCount = userCount;
+            
+          } catch (error) {
+            debugInfo.d1Error = error instanceof Error ? error.message : 'Unknown error';
+            debugInfo.d1Status = 'Error';
+          }
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          debugInfo
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
-      
-      if (path === '/api/auth/discord/login' && request.method === 'GET') {
-        return await handleDiscordLogin(request, env, corsHeaders);
+
+      // Authentication endpoints
+      if (path === '/api/auth/signup' && request.method === 'POST') {
+        return await handleSignup(request, env);
       }
-      
-      if (path === '/api/users' && request.method === 'GET') {
-        return await handleGetUsers(env, corsHeaders);
+
+      if (path === '/api/auth/login' && request.method === 'POST') {
+        return await handleLogin(request, env);
+      }
+
+      // Discord OAuth data storage endpoint
+      if (path === '/api/auth/discord/store' && request.method === 'POST') {
+        return await handleDiscordStore(request, env);
       }
 
       // Default response
-      return new Response(JSON.stringify({
-        message: 'Etherith Main Worker',
-        endpoints: [
-          'GET /api/setup - Initialize database',
-          'GET /api/auth/discord/login - Start Discord OAuth',
-          'GET /api/auth/discord/callback - Handle Discord OAuth callback',
-          'GET /api/users - List users'
-        ]
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      return new Response('Etherith Worker is running', {
+        headers: { 'Content-Type': 'text/plain' }
       });
 
     } catch (error) {
-      console.error('Worker error:', error);
+      console.error('❌ Worker error:', error);
       return new Response(JSON.stringify({
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }), {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      }), { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
   }
 };
 
-// Database setup
-async function handleSetup(env: any, corsHeaders: any): Promise<Response> {
+// Handle user signup
+async function handleSignup(request: Request, env: any): Promise<Response> {
   try {
-    const db = env.DB;
-    
-    // Check if tables exist
-    try {
-      await db.prepare('SELECT 1 FROM users LIMIT 1').run();
+    const body = await request.json() as SignupData;
+    const { firstName, lastName, username, email, password } = body;
+
+    // Validation
+    if (!firstName || !lastName || !username || !email || !password) {
       return new Response(JSON.stringify({
-        message: 'Database tables already exist',
-        status: 'ready'
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    } catch {
-      // Tables don't exist, create them
-      console.log('Creating database tables...');
-      
-      // Create users table
-      await db.prepare(`
-        CREATE TABLE IF NOT EXISTS users (
-          id TEXT PRIMARY KEY,
-          email TEXT NOT NULL UNIQUE,
-          username TEXT NOT NULL UNIQUE,
-          full_name TEXT NOT NULL,
-          password TEXT,
-          avatar_url TEXT,
-          discord_id TEXT UNIQUE,
-          cultural_background TEXT,
-          is_verified INTEGER DEFAULT 0,
-          verification_level INTEGER DEFAULT 1,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-      `).run();
-      
-      // Create indexes
-      await db.prepare('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)').run();
-      await db.prepare('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)').run();
-      await db.prepare('CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id)').run();
-      
-      return new Response(JSON.stringify({
-        message: 'Database tables created successfully',
-        status: 'created'
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        success: false,
+        error: 'All fields are required'
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    if (password.length < 8) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Password must be at least 8 characters long'
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR username = ?').bind(email, username).first();
     
-  } catch (error) {
-    console.error('Setup error:', error);
+    if (existingUser) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'User with this email or username already exists'
+      }), { 
+        status: 409,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Create user (in production, you'd hash the password)
+    const userId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    await env.DB.prepare(`
+      INSERT INTO users (id, email, username, full_name, password, is_verified, verification_level, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      userId,
+      email,
+      username,
+      `${firstName} ${lastName}`,
+      password, // In production, hash this
+      0, // is_verified
+      1, // verification_level
+      now,
+      now
+    ).run();
+
     return new Response(JSON.stringify({
-      error: 'Failed to setup database',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }), {
+      success: true,
+      message: 'User created successfully',
+      user: {
+        id: userId,
+        email,
+        username,
+        fullName: `${firstName} ${lastName}`,
+        isVerified: false,
+        verificationLevel: 1,
+        createdAt: now,
+        updatedAt: now
+      }
+    }), { 
+      status: 201,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Signup error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }), { 
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 }
 
-// Discord OAuth login initiation
-async function handleDiscordLogin(request: Request, env: any, corsHeaders: any): Promise<Response> {
-  const clientId = '1372269269143916544';
-  const redirectUri = 'https://etherith.pages.dev/api/auth/discord/callback';
-  const scope = 'identify email guilds';
-  
-  const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}`;
-  
-  return new Response(JSON.stringify({
-    authUrl,
-    message: 'Discord OAuth URL generated'
-  }), {
-    status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
+// Handle user login
+async function handleLogin(request: Request, env: any): Promise<Response> {
+  try {
+    const body = await request.json() as LoginData;
+    const { email, password } = body;
+
+    // Validation
+    if (!email || !password) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Email and password are required'
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Find user
+    const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
+    
+    if (!user) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid credentials'
+      }), { 
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // In production, verify password hash
+    if (user.password !== password) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid credentials'
+      }), { 
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Return user data (without password)
+    const { password: _, ...userWithoutPassword } = user;
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Login successful',
+      user: userWithoutPassword
+    }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
 
-// Discord OAuth callback handling
-async function handleDiscordCallback(request: Request, env: any, corsHeaders: any): Promise<Response> {
+// Handle Discord OAuth data storage
+async function handleDiscordStore(request: Request, env: any): Promise<Response> {
   try {
-    const url = new URL(request.url);
-    const code = url.searchParams.get('code');
-    
-    if (!code) {
+    const body = await request.json() as DiscordStoreData;
+    const { discordId, email, username, fullName, avatar, verified } = body;
+
+    // Validation
+    if (!discordId || !email || !username || !fullName) {
       return new Response(JSON.stringify({
-        error: 'No authorization code provided'
-      }), {
+        success: false,
+        error: 'Missing required Discord data'
+      }), { 
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Exchange code for access token
-    const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: '1372269269143916544',
-        client_secret: 'dJC4yei9lNhPrSzRfYv3oDksh6sqZES1',
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: 'https://etherith.pages.dev/api/auth/discord/callback',
-      }),
-    });
-
-    const tokenData = await tokenResponse.json();
+    // Check if user already exists by Discord ID or email
+    const existingUser = await env.DB.prepare('SELECT * FROM users WHERE discord_id = ? OR email = ?').bind(discordId, email).first();
     
-    if (!tokenResponse.ok) {
-      console.error('Discord token error:', tokenData);
-      return new Response(JSON.stringify({
-        error: 'Failed to get Discord access token'
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Get user profile from Discord
-    const userResponse = await fetch('https://discord.com/api/users/@me', {
-      headers: {
-        Authorization: `Bearer ${tokenData.access_token}`,
-      },
-    });
-
-    const discordProfile: DiscordProfile = await userResponse.json();
-    
-    if (!userResponse.ok) {
-      console.error('Discord profile error:', discordProfile);
-      return new Response(JSON.stringify({
-        error: 'Failed to get Discord user profile'
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Store user in D1 database
-    const db = env.DB;
-    const now = new Date().toISOString();
-    
-    // Check if user already exists
-    const existingUser = await db.prepare(
-      'SELECT * FROM users WHERE discord_id = ?'
-    ).bind(discordProfile.id).first();
-
     let userId: string;
-    
-    if (!existingUser) {
-      // Create new user
-      userId = crypto.randomUUID();
-      await db.prepare(`
-        INSERT INTO users (id, email, username, full_name, avatar_url, discord_id, is_verified, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        userId,
-        discordProfile.email,
-        discordProfile.username,
-        discordProfile.global_name || discordProfile.username,
-        discordProfile.avatar ? `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png` : null,
-        discordProfile.id,
-        discordProfile.verified ? 1 : 0,
-        now,
-        now
-      ).run();
-    } else {
-      // Update existing user
+    const now = new Date().toISOString();
+
+    if (existingUser) {
+      // Update existing user with Discord info
       userId = existingUser.id;
-      await db.prepare(`
+      await env.DB.prepare(`
         UPDATE users SET 
+          discord_id = ?,
+          username = ?,
+          full_name = ?,
           avatar_url = ?,
           is_verified = ?,
           updated_at = ?
-        WHERE discord_id = ?
+        WHERE id = ?
       `).bind(
-        discordProfile.avatar ? `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png` : existingUser.avatar_url,
-        discordProfile.verified ? 1 : 0,
+        discordId,
+        username,
+        fullName,
+        avatar ? `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png` : null,
+        verified ? 1 : 0,
         now,
-        discordProfile.id
+        userId
+      ).run();
+    } else {
+      // Create new user with Discord data
+      userId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO users (id, email, username, full_name, avatar_url, discord_id, is_verified, verification_level, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        userId,
+        email,
+        username,
+        fullName,
+        avatar ? `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png` : null,
+        discordId,
+        verified ? 1 : 0,
+        1, // verification_level
+        now,
+        now
       ).run();
     }
 
-    // Get the final user data
-    const finalUser = await db.prepare(
-      'SELECT * FROM users WHERE discord_id = ?'
-    ).bind(discordProfile.id).first();
+    console.log('✅ Discord user data stored in D1:', { userId, discordId, email, username });
 
     return new Response(JSON.stringify({
-      message: 'Discord authentication successful',
-      user: {
-        id: finalUser.id,
-        email: finalUser.email,
-        username: finalUser.username,
-        fullName: finalUser.full_name,
-        avatarUrl: finalUser.avatar_url,
-        discordId: finalUser.discord_id,
-        isVerified: Boolean(finalUser.is_verified),
-        verificationLevel: finalUser.verification_level,
-        createdAt: finalUser.created_at,
-        updatedAt: finalUser.updated_at
-      }
-    }), {
+      success: true,
+      message: 'Discord user data stored successfully',
+      userId: userId
+    }), { 
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Discord callback error:', error);
+    console.error('Discord store error:', error);
     return new Response(JSON.stringify({
-      error: 'Discord authentication failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }), {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }), { 
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 }
 
-// Get all users
-async function handleGetUsers(env: any, corsHeaders: any): Promise<Response> {
-  try {
-    const db = env.DB;
-    const users = await db.prepare('SELECT * FROM users ORDER BY created_at DESC').all();
-    
-    return new Response(JSON.stringify({
-      users: users.results,
-      count: users.results.length
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-    
-  } catch (error) {
-    console.error('Get users error:', error);
-    return new Response(JSON.stringify({
-      error: 'Failed to get users',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
-}

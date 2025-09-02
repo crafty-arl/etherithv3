@@ -15,7 +15,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         {/* Navigation Header */}
-        <nav className="flex justify-between items-center mb-16 rounded-2xl px-8 py-5 border transition-all duration-300"
+        <nav className="flex justify-between items-center mb-8 md:mb-16 rounded-2xl px-4 sm:px-6 md:px-8 py-4 md:py-5 border transition-all duration-300"
              style={{
                background: 'rgba(255, 255, 255, 0.95)',
                backdropFilter: 'blur(20px) saturate(180%)',
@@ -33,14 +33,17 @@ export default function HomePage() {
                      boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.1)'
                    }}></div>
             </div>
-            <span className="text-3xl font-bold text-stone-900 font-playfair">Etherith</span>
+            <span className="text-2xl sm:text-3xl font-bold text-stone-900 font-playfair">Etherith</span>
           </div>
           
           {/* Desktop Navigation */}
-          <div className="hidden md:flex space-x-8 items-center">
+          <div className="hidden lg:flex space-x-4 xl:space-x-8 items-center">
             <Link href="#features" className="text-stone-600 hover:text-stone-900 font-medium transition-all duration-200 hover:scale-105">Features</Link>
             <Link href="#about" className="text-stone-600 hover:text-stone-900 font-medium transition-all duration-200 hover:scale-105">About</Link>
             <Link href="#contact" className="text-stone-600 hover:text-stone-900 font-medium transition-all duration-200 hover:scale-105">Contact</Link>
+            {process.env.NODE_ENV === 'development' && (
+              <Link href="/debug" className="text-red-600 hover:text-red-800 font-medium transition-all duration-200 hover:scale-105">🐛 Debug</Link>
+            )}
             {user ? (
               <>
                 <Link href="/memory-weaver" className="text-stone-600 hover:text-stone-900 font-medium transition-all duration-200 hover:scale-105">Memory Weaver</Link>
@@ -75,7 +78,7 @@ export default function HomePage() {
           </div>
 
           {/* Mobile Navigation */}
-          <div className="md:hidden flex space-x-3">
+          <div className="lg:hidden flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 items-end sm:items-center">
             {user ? (
               <>
                 <Link href="/memory-weaver" className="text-stone-600 hover:text-stone-900 font-medium text-sm transition-colors duration-200">Memory Weaver</Link>
@@ -103,8 +106,8 @@ export default function HomePage() {
         </nav>
 
         {/* Main Hero Content */}
-        <div className="text-center max-w-5xl mx-auto mb-24">
-          <h1 className="text-6xl md:text-8xl font-bold mb-8 font-playfair leading-tight"
+        <div className="text-center max-w-5xl mx-auto mb-12 md:mb-24">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold mb-6 md:mb-8 font-playfair leading-tight"
               style={{
                 background: 'linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 50%, #1a1a1a 100%)',
                 WebkitBackgroundClip: 'text',
@@ -113,21 +116,21 @@ export default function HomePage() {
               }}>
             Etherith
           </h1>
-          <p className="text-xl md:text-2xl text-stone-700 mb-6 font-inter leading-relaxed max-w-4xl mx-auto">
+          <p className="text-lg sm:text-xl md:text-2xl text-stone-700 mb-4 md:mb-6 font-inter leading-relaxed max-w-4xl mx-auto px-4">
             Preserving ancestral memories, stories, and cultural heritage for future generations
           </p>
-          <p className="text-lg mb-12 font-inter"
+          <p className="text-base sm:text-lg mb-8 md:mb-12 font-inter px-4"
              style={{ color: '#8b7355' }}>
             Join us in protecting what makes our communities unique and valuable
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-20">
+          <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center mb-12 md:mb-20 px-4">
             {user ? (
               <>
                 <Button 
                   asChild 
                   size="lg" 
-                  className="px-10 py-4 text-lg font-bold rounded-2xl text-white transition-all duration-300 relative overflow-hidden"
+                  className="px-6 sm:px-8 md:px-10 py-3 md:py-4 text-base sm:text-lg font-bold rounded-2xl text-white transition-all duration-300 relative overflow-hidden"
                   style={{
                     background: 'linear-gradient(145deg, #1a1a1a, #2d2d2d)',
                     boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.2)'
@@ -149,7 +152,7 @@ export default function HomePage() {
                   asChild 
                   variant="outline" 
                   size="lg" 
-                  className="px-10 py-4 text-lg font-semibold rounded-2xl border-2 transition-all duration-300"
+                  className="px-6 sm:px-8 md:px-10 py-3 md:py-4 text-base sm:text-lg font-semibold rounded-2xl border-2 transition-all duration-300"
                   style={{
                     borderColor: '#d2b48c',
                     color: '#8b7355',
@@ -179,7 +182,7 @@ export default function HomePage() {
             <Button 
               asChild 
               size="lg" 
-                  className="px-10 py-4 text-lg font-bold rounded-2xl text-white transition-all duration-300 relative overflow-hidden"
+                  className="px-6 sm:px-8 md:px-10 py-3 md:py-4 text-base sm:text-lg font-bold rounded-2xl text-white transition-all duration-300 relative overflow-hidden"
                   style={{
                     background: 'linear-gradient(145deg, #1a1a1a, #2d2d2d)',
                     boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.2)'
@@ -201,7 +204,7 @@ export default function HomePage() {
               asChild 
               variant="outline" 
               size="lg" 
-                  className="px-10 py-4 text-lg font-semibold rounded-2xl border-2 transition-all duration-300"
+                  className="px-6 sm:px-8 md:px-10 py-3 md:py-4 text-base sm:text-lg font-semibold rounded-2xl border-2 transition-all duration-300"
                   style={{
                     borderColor: '#d2b48c',
                     color: '#8b7355',
@@ -231,12 +234,12 @@ export default function HomePage() {
         </div>
 
         {/* Hero Image Section */}
-        <div className="flex justify-center mb-24">
+        <div className="flex justify-center mb-12 md:mb-24">
           <div className="relative">
             <img 
               src="/head-shot.jpg" 
               alt="Etherith Hero Image" 
-              className="w-64 h-64 md:w-80 md:h-80 rounded-full object-cover shadow-2xl"
+              className="w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 rounded-full object-cover shadow-2xl"
               style={{
                 boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
               }}
@@ -246,9 +249,9 @@ export default function HomePage() {
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-7xl mx-auto mb-24">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10 max-w-7xl mx-auto mb-12 md:mb-24 px-4">
           {/* Feature 1 */}
-          <div className="rounded-3xl p-10 transition-all duration-500 hover:scale-105 cursor-pointer border"
+          <div className="rounded-3xl p-6 md:p-10 transition-all duration-500 hover:scale-105 cursor-pointer border"
                style={{
                  background: 'rgba(255, 255, 255, 0.9)',
                  backdropFilter: 'blur(20px) saturate(180%)',
@@ -266,17 +269,17 @@ export default function HomePage() {
                      boxShadow: 'inset 2px 2px 4px rgba(255,255,255,0.3), inset -2px -2px 4px rgba(0,0,0,0.1)'
                    }}></div>
             </div>
-            <h3 className="text-2xl font-bold text-stone-900 mb-6 font-playfair text-center">
+            <h3 className="text-xl sm:text-2xl font-bold text-stone-900 mb-4 md:mb-6 font-playfair text-center">
               Cultural Preservation
             </h3>
-            <p className="text-stone-600 leading-relaxed font-inter text-center">
+            <p className="text-sm sm:text-base text-stone-600 leading-relaxed font-inter text-center">
               Safeguard ancestral memories and cultural stories from being lost or appropriated. 
               Our platform ensures your heritage remains protected for generations.
             </p>
           </div>
           
           {/* Feature 2 */}
-          <div className="rounded-3xl p-10 transition-all duration-500 hover:scale-105 cursor-pointer border"
+          <div className="rounded-3xl p-6 md:p-10 transition-all duration-500 hover:scale-105 cursor-pointer border"
                style={{
                  background: 'rgba(255, 255, 255, 0.9)',
                  backdropFilter: 'blur(20px) saturate(180%)',
@@ -294,17 +297,17 @@ export default function HomePage() {
                      boxShadow: 'inset 2px 2px 4px rgba(255,255,255,0.3), inset -2px -2px 4px rgba(0,0,0,0.1)'
                    }}></div>
             </div>
-            <h3 className="text-2xl font-bold text-stone-900 mb-6 font-playfair text-center">
+            <h3 className="text-xl sm:text-2xl font-bold text-stone-900 mb-4 md:mb-6 font-playfair text-center">
               AI-Enhanced Memory
             </h3>
-            <p className="text-stone-600 leading-relaxed font-inter text-center">
+            <p className="text-sm sm:text-base text-stone-600 leading-relaxed font-inter text-center">
               Leverage artificial intelligence to intelligently organize and preserve memories with 
               rich metadata and cultural context recognition.
             </p>
           </div>
           
           {/* Feature 3 */}
-          <div className="rounded-3xl p-10 transition-all duration-500 hover:scale-105 cursor-pointer border"
+          <div className="rounded-3xl p-6 md:p-10 transition-all duration-500 hover:scale-105 cursor-pointer border"
                style={{
                  background: 'rgba(255, 255, 255, 0.9)',
                  backdropFilter: 'blur(20px) saturate(180%)',
@@ -322,10 +325,10 @@ export default function HomePage() {
                      boxShadow: 'inset 2px 2px 4px rgba(255,255,255,0.3), inset -2px -2px 4px rgba(0,0,0,0.1)'
                    }}></div>
             </div>
-            <h3 className="text-2xl font-bold text-stone-900 mb-6 font-playfair text-center">
+            <h3 className="text-xl sm:text-2xl font-bold text-stone-900 mb-4 md:mb-6 font-playfair text-center">
               IPFS Storage
             </h3>
-            <p className="text-stone-600 leading-relaxed font-inter text-center">
+            <p className="text-sm sm:text-base text-stone-600 leading-relaxed font-inter text-center">
               Permanent, decentralized storage on the IPFS network via Pinata ensures your 
               memories are preserved forever, beyond any single platform.
             </p>
@@ -333,18 +336,18 @@ export default function HomePage() {
         </div>
 
         {/* Cultural Heritage Banner */}
-        <div className="rounded-3xl p-16 text-center border transition-all duration-300 hover:scale-[1.02]"
+        <div className="rounded-3xl p-8 md:p-16 text-center border transition-all duration-300 hover:scale-[1.02] mx-4"
              style={{
                background: 'linear-gradient(145deg, #1a1a1a, #2d2d2d)',
                boxShadow: '0 30px 80px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.5)',
                borderColor: 'rgba(255, 255, 255, 0.1)'
              }}>
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-8 font-playfair leading-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-6 md:mb-8 font-playfair leading-tight">
             More Than Technology
             <br />
             <span style={{ color: '#d2b48c' }}>A Cultural Movement</span>
           </h2>
-          <p className="text-xl text-gray-300 mb-10 max-w-4xl mx-auto font-inter leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-6 md:mb-10 max-w-4xl mx-auto font-inter leading-relaxed px-4">
             Etherith represents a cultural movement to reclaim and preserve our collective heritage. 
             In a world where cultural appropriation and erasure are rampant, we provide the tools 
             needed to protect what makes our communities unique.
@@ -353,7 +356,7 @@ export default function HomePage() {
             asChild 
             size="lg" 
             variant="outline"
-            className="px-10 py-4 text-lg font-semibold rounded-2xl border-2 transition-all duration-300"
+            className="px-6 sm:px-8 md:px-10 py-3 md:py-4 text-base sm:text-lg font-semibold rounded-2xl border-2 transition-all duration-300"
             style={{
               borderColor: '#d2b48c',
               color: '#d2b48c',

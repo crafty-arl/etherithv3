@@ -17,6 +17,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  session: any;
+  status: string;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (userData: { firstName: string; lastName: string; username: string; email: string; password: string }) => Promise<void>;
@@ -44,9 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firstName: session.user.name?.split(' ')[0] || '',
         lastName: session.user.name?.split(' ').slice(1).join(' ') || '',
         avatar: session.user.image || '',
-        username: session.user.username || '',
-        culturalBackground: session.user.culturalBackground || '',
-        isVerified: session.user.isVerified || false,
+        username: (session.user as any).username || session.user.email?.split('@')[0] || '',
+        culturalBackground: (session.user as any).culturalBackground || 'Default',
+        isVerified: (session.user as any).isVerified || false,
       };
       setUser(transformedUser);
     } else {
@@ -103,12 +105,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(userData),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Signup failed');
+        throw new Error(data.error || 'Signup failed');
       }
 
-      // Auto-login after successful signup
+      // After successful signup, automatically log in
       await login(userData.email, userData.password);
     } catch (error) {
       console.error('Signup failed:', error);
@@ -122,30 +125,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const newSession = await getSession();
       if (newSession?.user) {
+        // Update user state with new session data
         const transformedUser: User = {
           id: newSession.user.id || '',
           email: newSession.user.email || '',
           firstName: newSession.user.name?.split(' ')[0] || '',
           lastName: newSession.user.name?.split(' ').slice(1).join(' ') || '',
           avatar: newSession.user.image || '',
-          username: newSession.user.username || '',
-          culturalBackground: newSession.user.culturalBackground || '',
-          isVerified: newSession.user.isVerified || false,
+          username: (newSession.user as any).username || newSession.user.email?.split('@')[0] || '',
+          culturalBackground: (newSession.user as any).culturalBackground || 'Default',
+          isVerified: (newSession.user as any).isVerified || false,
         };
         setUser(transformedUser);
       }
     } catch (error) {
-      console.error('Session refresh failed:', error);
+      console.error('Failed to refresh session:', error);
     }
   };
 
   const value: AuthContextType = {
     user,
     isLoading,
+    session,
+    status,
     login,
     logout,
     signup,
-    refreshSession
+    refreshSession,
   };
 
   return (

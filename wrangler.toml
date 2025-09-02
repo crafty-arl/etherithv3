@@ -1,13 +1,7 @@
 name = "etherith"
+main = "src/index.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
-
-# Use Pages Functions instead of static build
-[pages_functions]
-# This enables serverless functions for your Pages project
-
-[vars]
-NODE_ENV = "production"
 
 # D1 Database - Cloudflare's native SQLite database
 [[d1_databases]]
@@ -19,10 +13,18 @@ database_id = "042a5e9c-d027-42e9-aeab-cf5302a77af7"
 [ai]
 binding = "AI"
 
-# Environment-specific configurations for Pages
+# Environment-specific configurations
 [env.preview]
 name = "etherith-preview"
 vars = { NODE_ENV = "development" }
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "etherith-db"
+database_id = "042a5e9c-d027-42e9-aeab-cf5302a77af7"
+
+[env.preview.ai]
+binding = "AI"
 
 [env.production]  
 name = "etherith-production"

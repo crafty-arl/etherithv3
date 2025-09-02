@@ -335,12 +335,13 @@ export default function MyMemoriesPage() {
              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(0, 0, 0, 0.05)',
              borderBottom: '1px solid rgba(255, 255, 255, 0.3)'
            }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2 text-stone-600 hover:text-stone-900 transition-colors">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Link href="/" className="flex items-center space-x-1 sm:space-x-2 text-stone-600 hover:text-stone-900 transition-colors text-sm sm:text-base">
                 <ArrowLeft className="w-5 h-5" />
-                <span>Back to Home</span>
+                <span className="hidden sm:inline">Back to Home</span>
+                <span className="sm:hidden">Back</span>
               </Link>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden"
                    style={{
@@ -350,19 +351,19 @@ export default function MyMemoriesPage() {
                 <FolderOpen className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-stone-900 font-playfair">My Memories</h1>
-                <p className="text-sm text-stone-600">Personal Cultural Heritage Collection</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-stone-900 font-playfair">My Memories</h1>
+                <p className="text-xs sm:text-sm text-stone-600">Personal Cultural Heritage Collection</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               {user && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2">
                   <Users className="w-4 h-4 text-stone-600" />
-                  <span className="text-stone-700 font-medium">Welcome, {user.firstName}!</span>
+                  <span className="text-sm sm:text-base text-stone-700 font-medium">Welcome, {user.firstName}!</span>
                 </div>
               )}
-              <Link href="/memory-weaver" className="px-4 py-2 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all duration-200">
+              <Link href="/memory-weaver" className="px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all duration-200 whitespace-nowrap">
                 <Plus className="w-4 h-4 inline mr-2" />
                 Create Memory
               </Link>
@@ -371,14 +372,14 @@ export default function MyMemoriesPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {/* Page Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 md:mb-12">
           <motion.h1
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6 }}
-            className="text-5xl md:text-6xl font-bold mb-6 font-playfair leading-tight"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 font-playfair leading-tight"
             style={{
               background: 'linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 50%, #1a1a1a 100%)',
               WebkitBackgroundClip: 'text',
@@ -392,7 +393,7 @@ export default function MyMemoriesPage() {
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-xl text-stone-700 max-w-3xl mx-auto"
+            className="text-lg sm:text-xl text-stone-700 max-w-3xl mx-auto px-4"
           >
             Manage and organize your personal cultural heritage. Keep your memories private or share them with the world.
           </motion.p>
@@ -403,7 +404,7 @@ export default function MyMemoriesPage() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8"
         >
           {[
             { label: 'Total Memories', value: memories.length, icon: <FolderOpen className="w-6 h-6" />, color: 'from-blue-500 to-indigo-500' },
@@ -411,19 +412,19 @@ export default function MyMemoriesPage() {
             { label: 'Private', value: memories.filter(m => !m.isPublic).length, icon: <Lock className="w-6 h-6" />, color: 'from-amber-500 to-orange-500' },
             { label: 'Bookmarked', value: memories.filter(m => m.isBookmarked).length, icon: <Bookmark className="w-6 h-6" />, color: 'from-pink-500 to-rose-500' }
           ].map((stat) => (
-            <div key={stat.label} className="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/20"
+            <div key={stat.label} className="bg-white/80 backdrop-blur-md rounded-3xl p-4 md:p-6 shadow-xl border border-white/20"
                  style={{
                    background: 'rgba(255, 255, 255, 0.9)',
                    backdropFilter: 'blur(20px) saturate(180%)',
                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(0, 0, 0, 0.05)',
                    borderColor: 'rgba(255, 255, 255, 0.3)'
                  }}>
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-r ${stat.color} flex items-center justify-center mb-4 mx-auto`}>
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-r ${stat.color} flex items-center justify-center mb-3 md:mb-4 mx-auto`}>
                 {stat.icon}
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-stone-800 mb-2">{stat.value}</div>
-                <div className="text-sm text-stone-600">{stat.label}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-stone-800 mb-1 md:mb-2">{stat.value}</div>
+                <div className="text-xs sm:text-sm text-stone-600">{stat.label}</div>
               </div>
             </div>
           ))}
@@ -434,16 +435,16 @@ export default function MyMemoriesPage() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="mb-8"
+          className="mb-6 md:mb-8"
         >
-          <div className="bg-white rounded-3xl p-6 shadow-xl border mb-6"
+          <div className="bg-white rounded-3xl p-4 md:p-6 shadow-xl border mb-4 md:mb-6"
                style={{
                  background: 'rgba(255, 255, 255, 0.9)',
                  backdropFilter: 'blur(20px) saturate(180%)',
                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(0, 0, 0, 0.05)',
                  borderColor: 'rgba(255, 255, 255, 0.3)'
                }}>
-            <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
+            <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-center justify-between">
               {/* Search Bar */}
               <div className="flex-1 max-w-md w-full">
                 <div className="relative">
@@ -453,15 +454,15 @@ export default function MyMemoriesPage() {
                     placeholder="Search your memories..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-stone-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2 md:py-3 border border-stone-300 rounded-xl focus:ring-2 focus:ring-stone-500 focus:border-transparent text-sm md:text-base"
                   />
                 </div>
               </div>
 
               {/* View Mode and Sort */}
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
                 {/* View Mode Toggle */}
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2">
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`p-2 rounded-lg transition-all duration-200 ${
@@ -490,7 +491,7 @@ export default function MyMemoriesPage() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'recent' | 'oldest' | 'name' | 'location')}
-                  className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-transparent"
+                  className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-transparent text-sm"
                 >
                   {sortOptions.map((option) => (
                     <option key={option.id} value={option.id}>{option.name}</option>
@@ -503,12 +504,12 @@ export default function MyMemoriesPage() {
           {/* Category and Status Filters */}
           <div className="space-y-4">
             {/* Categories */}
-            <div className="flex flex-wrap gap-3 justify-center">
+            <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
               {categories.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                  className={`px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                     selectedCategory === category.id
                       ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg scale-105'
                       : 'bg-white/60 backdrop-blur-md text-stone-600 hover:bg-white/80 hover:scale-105'
@@ -516,20 +517,20 @@ export default function MyMemoriesPage() {
                 >
                   <div className="flex items-center space-x-2">
                     {category.icon}
-                    <span className="font-medium">{category.name}</span>
-                    <span className="text-xs opacity-75">({category.count})</span>
+                    <span className="font-medium text-xs sm:text-sm">{category.name}</span>
+                    <span className="text-xs opacity-75 hidden sm:inline">({category.count})</span>
                   </div>
                 </button>
               ))}
             </div>
 
             {/* Statuses */}
-            <div className="flex flex-wrap gap-3 justify-center">
+            <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
               {statuses.map((status) => (
                 <button
                   key={status.id}
                   onClick={() => setSelectedStatus(status.id)}
-                  className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                  className={`px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                     selectedStatus === status.id
                       ? 'bg-gradient-to-r from-blue-400 to-indigo-500 text-white shadow-lg scale-105'
                       : 'bg-white/60 backdrop-blur-md text-stone-600 hover:bg-white/80 hover:scale-105'
@@ -537,8 +538,8 @@ export default function MyMemoriesPage() {
                 >
                   <div className="flex items-center space-x-2">
                     {status.icon}
-                    <span className="font-medium">{status.name}</span>
-                    <span className="text-xs opacity-75">({status.count})</span>
+                    <span className="font-medium text-xs sm:text-sm">{status.name}</span>
+                    <span className="text-xs opacity-75 hidden sm:inline">({status.count})</span>
                   </div>
                 </button>
               ))}
@@ -547,7 +548,7 @@ export default function MyMemoriesPage() {
         </motion.div>
 
         {/* Content Area */}
-        <div className="px-6 pb-20">
+        <div className="px-4 md:px-6 pb-20">
           <div className="max-w-7xl mx-auto">
             {filteredMemories.length === 0 ? (
               <motion.div
@@ -634,7 +635,7 @@ export default function MyMemoriesPage() {
                         </div>
 
                         {/* Media Preview */}
-                        <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="grid grid-cols-2 gap-2 md:gap-3 mb-4">
                           {memory.mediaFiles.slice(0, 4).map((file) => (
                             <div key={file.id} className="relative group/file">
                               <div className="aspect-square bg-gradient-to-br from-stone-100 to-stone-200 rounded-xl flex items-center justify-center">
@@ -659,7 +660,7 @@ export default function MyMemoriesPage() {
                         </div>
 
                         {/* Stats */}
-                        <div className="flex items-center justify-between text-sm text-stone-500 mb-4">
+                        <div className="flex items-center justify-between text-xs sm:text-sm text-stone-500 mb-4">
                           <div className="flex items-center space-x-4">
                             <div className="flex items-center space-x-1">
                               <Eye className="w-4 h-4" />
@@ -670,14 +671,14 @@ export default function MyMemoriesPage() {
                               <span>{memory.shareCount}</span>
                             </div>
                           </div>
-                          <div className="text-xs text-stone-400">
+                          <div className="text-xs text-stone-400 hidden sm:block">
                             Modified {new Date(memory.lastModified).toLocaleDateString()}
                           </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex space-x-2">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                          <div className="flex space-x-1 sm:space-x-2">
                             <button
                               onClick={() => toggleMemoryStatus(memory.id, 'public')}
                               className={`p-2 rounded-lg transition-colors ${
@@ -702,17 +703,17 @@ export default function MyMemoriesPage() {
                             </button>
                           </div>
                           
-                          <div className="flex space-x-2">
-                            <button className="p-2 rounded-lg bg-stone-100 hover:bg-stone-200 transition-colors" title="Edit">
+                          <div className="flex space-x-1 sm:space-x-2">
+                            <button className="p-1.5 sm:p-2 rounded-lg bg-stone-100 hover:bg-stone-200 transition-colors" title="Edit">
                               <Edit3 className="w-4 h-4 text-stone-600" />
                             </button>
-                            <button className="p-2 rounded-lg bg-stone-100 hover:bg-stone-200 transition-colors" title="Share">
+                            <button className="p-1.5 sm:p-2 rounded-lg bg-stone-100 hover:bg-stone-200 transition-colors" title="Share">
                               <Share2 className="w-4 h-4 text-stone-600" />
                             </button>
-                            <button className="p-2 rounded-lg bg-stone-100 hover:bg-stone-200 transition-colors" title="Download">
+                            <button className="p-1.5 sm:p-2 rounded-lg bg-stone-100 hover:bg-stone-200 transition-colors" title="Download">
                               <Download className="w-4 h-4 text-stone-600" />
                             </button>
-                            <button className="p-2 rounded-lg bg-red-100 hover:bg-red-200 transition-colors" title="Delete">
+                            <button className="p-1.5 sm:p-2 rounded-lg bg-red-100 hover:bg-red-200 transition-colors" title="Delete">
                               <Trash2 className="w-4 h-4 text-red-600" />
                             </button>
                           </div>
